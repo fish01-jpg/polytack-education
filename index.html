@@ -103,13 +103,17 @@ font-size:12px;color:var(--text);max-width:210px;display:none}
 #shadowHud canvas{display:block;margin:6px auto 2px;background:#0b1220;border-radius:8px}
 #shadowDelta{font-weight:700}
 /* Top-left in-race HUD: attempts left + ability readiness. */
-#raceHud{position:fixed;left:14px;top:14px;z-index:99998;background:#0f172aee;
+#raceHud{position:fixed;left:14px;top:14px;z-index:1000000;background:#0f172aee;
 border:1px solid var(--border);border-radius:12px;padding:8px 12px;font-size:12px;
 color:var(--text);line-height:1.6;display:none;pointer-events:none;max-width:230px}
 #raceHud.show{display:block}
 #raceHud b{font-weight:700}
 #raceHud .dim{opacity:.45}
 #raceHud .good{color:var(--good)}
+/* The game's own top button bar (div.editor > div.top > div.button-bar,
+   68px tall, opaque background) moves to the BOTTOM-left so the classroom
+   HUD owns the top-left corner. */
+#ui>.top,.editor>.top,.ui>.top{position:absolute!important;left:0!important;bottom:0!important;top:auto!important;right:auto!important;width:auto!important;max-width:80vw!important}
 </style></head><body class="hide-cursor"><module>
 <moduleprefs title="Poly Track">
 <content type="html"><!--[CDATA[
@@ -1145,7 +1149,14 @@ input[type="text"]:focus-visible {
   <div class="card hidden" id="soloBanner">
     <h3>🎮 Solo practice</h3>
     <p class="small">Free racing, no teacher code needed: quizzes, points and track rules are off, runs aren't recorded, and every track is open. Use it to practice — join a class to play the real tournament.</p>
-    <div class="footer"><button id="soloExitBtn" class="primary">Join a class →</button></div>
+    <p class="small" style="margin-bottom:6px">📥 <b>Import your class car:</b> paste a car code (PTCAR1-…) below and everything you built in a class — upgrades, tuning sliders and paint — becomes your solo car. Classes can't import; solo cars never leak back into a class.</p>
+    <textarea id="soloImportBox" class="small" style="width:100%;min-height:44px;box-sizing:border-box;resize:vertical" placeholder="Paste a PTCAR1- car code here…"></textarea>
+    <div class="footer">
+      <button id="soloImportBtn" class="primary">📥 Import car</button>
+      <button id="soloExportBtn">📤 Export this car</button>
+      <button id="soloClearCarBtn">♻️ Stock car</button>
+      <button id="soloExitBtn" class="primary">Join a class →</button>
+    </div>
   </div>
   <div class="card hidden" id="trackCard">
     <h3 id="trackTitle">Tracks</h3>
@@ -1315,12 +1326,12 @@ function upgradeLevel(key){
 function appliedLevel(key){
   const owned=upgradeLevel(key);
   if(owned<1)return 0;
-  const t=(meData&&meData.perfTune&&meData.perfTune[key]);
+  const t=myTune()[key];
   const v=(t==null||isNaN(t))?owned:Math.max(0,Math.min(owned,parseInt(t)));
   return v;
 }
 function carPerf(){
-  const s=S();
+  const s=carBaseMults();   // class settings, or the imported car's packed base
   const eLvl=appliedLevel("engine"),tLvl=appliedLevel("tires"),aLvl=appliedLevel("aero"),bLvl=appliedLevel("brakes");
   /* HANDLING > SPEED BY DESIGN: grip and steering grow faster (+15%/+5% per
      level) than acceleration (+12%) and top speed (+8%), so a fully-maxed
@@ -1332,8 +1343,8 @@ function carPerf(){
     brake:clampMult(cfgNum(s.carBrakeMult,1))*(1+0.10*bLvl),     // up to +120%
     steer:Math.min(1.5,1+0.05*tLvl),                            // sharper steering (max +50%)
     driftKeep:Math.min(0.85,0.25+0.05*tLvl),                    // drift momentum keep (base 25% for everyone)
-    turbo:upgradeLevel("turbo")>=3?3:upgradeLevel("turbo")===2?2.5:upgradeLevel("turbo")===1?2:1,
-    jump:upgradeLevel("jump"),                                   // 0-3
+    turbo:[1,2,2.5,3,3.5,4][Math.min(5,upgradeLevel("turbo"))]||1,   // up to 4x (5 levels)
+    jump:Math.min(5,upgradeLevel("jump")),                       // 0-5
     airG:1.6                                                    // extra gravity while airborne
   };
 }
@@ -1395,8 +1406,9 @@ function tryTurbo(){
     if(BOOST.turboRun===RACE.runId)return toast("⚡ Turbo already used this race — one per race!");
     BOOST.turboRun=RACE.runId;
     BOOST.turboMult=p.turbo;
-    BOOST.turboUntil=performance.now()+3000;
-    toast(`⚡ TURBO — ${p.turbo}x for 3 seconds!`);
+    const dur=3000+500*(upgradeLevel("turbo")-1);   // 3s → 5s at Turbo V
+    BOOST.turboUntil=performance.now()+dur;
+    toast(`⚡ TURBO — ${p.turbo}x engine boost for ${Math.round(dur/1000*10)/10} seconds!`);
   }catch(e){}
 }
 function tryJump(e){
@@ -1420,8 +1432,8 @@ function tryJump(e){
     if(!grounded)return;
     const b=car.getRigidBody();
     if(!b||!window.Ammo)return;
-    /* Impulse = mass(400) * pop velocity (6.5 / 8 / 9.5 m/s by level). */
-    const dv=5+1.5*p.jump;
+    /* Impulse = mass(400) * pop velocity (6.5 → 14.5 m/s across the 5 levels). */
+    const dv=4.5+2*p.jump;
     const imp=new window.Ammo.btVector3(0,400*dv,0);
     try{b.applyCentralImpulse(imp);}finally{try{window.Ammo.destroy(imp);}catch(_e){}}
     BOOST.jumpNextAt=now+1500;
@@ -1666,14 +1678,20 @@ const SHOP_CATALOG=[
         cost:Math.round(c.base*Math.pow(n,1.45)),cat:"perf",req:n>1?c.key+(n-1):null});
     }
   });
-  /* ABILITIES (buyable, one-time each level): SPACE jump + SHIFT turbo. */
+  /* ABILITIES (buyable, one-time each level): SPACE jump + SHIFT turbo.
+     5 levels each — Turbo V is a 4x engine boost for 5 seconds; Jump Jets V
+     is a 14.5 m/s pop that clears almost anything. */
   SHOP_CATALOG.push(
     {id:"jump1",name:"🚀 Jump Jets I",  desc:"Press SPACE mid-race to pop the car off the ground (1.5s cooldown)",cost:250,cat:"perf",req:null},
-    {id:"jump2",name:"🚀 Jump Jets II", desc:"Bigger pop — clears more obstacles (needs Jump Jets I)",cost:500,cat:"perf",req:"jump1"},
-    {id:"jump3",name:"🚀 Jump Jets III",desc:"Biggest pop (needs Jump Jets II)",cost:900,cat:"perf",req:"jump2"},
-    {id:"turbo1",name:"⚡ Turbo I",   desc:"SHIFT once per race: 3-second burst at 2x speed",cost:300,cat:"perf",req:null},
-    {id:"turbo2",name:"⚡ Turbo II",  desc:"3s burst at 2.5x speed (needs Turbo I)",cost:600,cat:"perf",req:"turbo1"},
-    {id:"turbo3",name:"⚡ Turbo III", desc:"3s burst at 3x speed (needs Turbo II)",cost:1000,cat:"perf",req:"turbo2"}
+    {id:"jump2",name:"🚀 Jump Jets II", desc:"8.5 m/s launch (needs Jump Jets I)",cost:500,cat:"perf",req:"jump1"},
+    {id:"jump3",name:"🚀 Jump Jets III",desc:"10.5 m/s launch — clears most obstacles (needs Jump Jets II)",cost:900,cat:"perf",req:"jump2"},
+    {id:"jump4",name:"🚀 Jump Jets IV", desc:"12.5 m/s launch (needs Jump Jets III)",cost:1400,cat:"perf",req:"jump3"},
+    {id:"jump5",name:"🚀 Jump Jets V",  desc:"MAX: 14.5 m/s mega-pop (needs Jump Jets IV)",cost:2000,cat:"perf",req:"jump4"},
+    {id:"turbo1",name:"⚡ Turbo I",   desc:"SHIFT once per race: 3-second burst of 2x engine boost",cost:300,cat:"perf",req:null},
+    {id:"turbo2",name:"⚡ Turbo II",  desc:"3.5s burst of 2.5x engine boost (needs Turbo I)",cost:600,cat:"perf",req:"turbo1"},
+    {id:"turbo3",name:"⚡ Turbo III", desc:"4s burst of 3x engine boost (needs Turbo II)",cost:1000,cat:"perf",req:"turbo2"},
+    {id:"turbo4",name:"⚡ Turbo IV",  desc:"4.5s burst of 3.5x engine boost (needs Turbo III)",cost:1500,cat:"perf",req:"turbo3"},
+    {id:"turbo5",name:"⚡ Turbo V",   desc:"MAX: 5s burst of 4x engine boost (needs Turbo IV)",cost:2100,cat:"perf",req:"turbo4"}
   );
 })();
 function shopCost(item){return Math.round(item.cost*(parseFloat(S().shopCostMultiplier)||1));}
@@ -1738,8 +1756,92 @@ function resetCarColors(){
     if(d&&d.length>=4)ptcApplyColors(String(d[0]),String(d[1]),String(d[2]),String(d[3]));
   }catch(e){}
 }
-function myUpgrades(){return (meData&&meData.upgrades)||[];}
+function myUpgrades(){
+  /* Solo practice drives whatever car was IMPORTED (see export/import
+     below); a class always uses the student's class doc. */
+  if(soloMode){const sc=soloCar();return (sc&&Array.isArray(sc.upgrades))?sc.upgrades:[];}
+  return (meData&&meData.upgrades)||[];
+}
 function myConsumables(){return (meData&&meData.consumables)||{};}
+
+/* ---------------- car setup EXPORT / IMPORT ----------------
+   EXPORT (works in a class or solo): packs the whole car — every upgrade,
+   the tuning-slider settings, and the paint — into a short paste-able code.
+   IMPORT (solo practice ONLY): paste a code and that class car becomes your
+   solo car, stored in this browser. Classes NEVER import — the teacher's
+   class settings + the student's class doc always decide the car there, so
+   importing can't be used to cheat a class. */
+function soloCar(){
+  try{return JSON.parse(localStorage.getItem("ptc-solo-car")||"null");}catch(e){return null;}
+}
+function saveSoloCar(c){
+  try{localStorage.setItem("ptc-solo-car",JSON.stringify(c));}catch(e){}
+}
+function myTune(){
+  if(soloMode){const sc=soloCar();return (sc&&sc.perfTune)||{};}
+  return (meData&&meData.perfTune)||{};
+}
+/* Solo cars can carry the CLASS's teacher-set base multipliers (exported with
+   the car); class mode always reads them live from the class settings. */
+function carBaseMults(){
+  if(soloMode){
+    const sc=soloCar();const b=(sc&&sc.base)||{};
+    const num=v=>(v!=null&&isFinite(v)&&!isNaN(v))?Math.max(0.25,Math.min(3,parseFloat(v))):1;
+    return {carAccelMult:num(b.accel),carTopSpeedMult:num(b.top),carGripMult:num(b.grip),carBrakeMult:num(b.brake)};
+  }
+  return S();
+}
+function buildCarExport(){
+  const paint=(()=>{try{return JSON.parse(localStorage.getItem("v1_car")||"null");}catch(e){return null;}})();
+  const up=(soloMode?((soloCar()||{}).upgrades):myUpgrades())||[];
+  const tune=myTune();
+  /* Class cars also pack the teacher's base multipliers so the car drives
+     identically in solo; solo exports just pack whatever the solo car uses. */
+  const bm=carBaseMults();
+  const base=soloMode?((soloCar()||{}).base||null):{accel:bm.carAccelMult,top:bm.carTopSpeedMult,grip:bm.carGripMult,brake:bm.carBrakeMult};
+  const pack={v:1,up:up.filter(x=>typeof x==="string"),tune:tune||{},
+    paint:(Array.isArray(paint)&&paint.length>=4)?paint:null,
+    base:(base&&(base.accel!=null||base.top!=null||base.grip!=null||base.brake!=null))?base:null};
+  const json=JSON.stringify(pack);
+  return "PTCAR1-"+btoa(unescape(encodeURIComponent(json))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+function importCarCode(code){
+  try{
+    code=String(code||"").trim();
+    if(!code.startsWith("PTCAR1-"))return {ok:false,msg:"That doesn't look like a car code (they start with PTCAR1-)."};
+    let b=code.slice(7).replace(/-/g,"+").replace(/_/g,"/");
+    while(b.length%4)b+="=";
+    const json=decodeURIComponent(escape(atob(b)));
+    const pack=JSON.parse(json);
+    if(!pack||pack.v!==1||!Array.isArray(pack.up))return {ok:false,msg:"This car code is broken or from a newer version."};
+    pack.up=pack.up.filter(x=>typeof x==="string");
+    return {ok:true,pack};
+  }catch(e){return {ok:false,msg:"Could not read that code — copy the whole thing and paste it again."};}
+}
+function applySoloCar(pack){
+  /* Hard guard: importing ONLY ever works in solo practice — never while a
+     class is joined, so an import can't touch the class car. */
+  if(!soloMode||classCode)return false;
+  /* Validate the numeric pieces (base multipliers, tune values). */
+  const tune={};
+  if(pack.tune&&typeof pack.tune==="object")
+    for(const k of Object.keys(pack.tune)){const v=parseInt(pack.tune[k]);if(!isNaN(v)&&v>=0)tune[k]=Math.min(12,v);}
+  let base=null;
+  if(pack.base&&typeof pack.base==="object"){
+    const num=v=>(v!=null&&isFinite(v)&&!isNaN(v))?Math.max(0.25,Math.min(3,parseFloat(v))):null;
+    const b={accel:num(pack.base.accel),top:num(pack.base.top),grip:num(pack.base.grip),brake:num(pack.base.brake)};
+    if(b.accel!=null||b.top!=null||b.grip!=null||b.brake!=null)base=b;
+  }
+  saveSoloCar({upgrades:pack.up,perfTune:tune,carColors:pack.paint||null,base:base});
+  /* Paint: apply it, or reset to the game's default look when the code has
+     none — an import must never leave the previous car's paint on. */
+  if(Array.isArray(pack.paint)&&pack.paint.length>=4)applyPaintsNow(pack.paint);
+  else resetCarColors();
+  killBoost();   // any live turbo/jump ends with the car swap
+  refreshUI();
+  return true;
+}
+function killBoost(){BOOST.turboUntil=0;BOOST.jumpNextAt=0;}
 function shopFlair(){
   const u=myUpgrades();
   return {flair:[u.includes("crown")?"👑":"",u.includes("turbo")?"🔧":"",u.includes("nitro")?"🚀":"",u.includes("flame")?"🔥":""].join(""),
@@ -1937,14 +2039,34 @@ $("soloBtn").onclick=()=>{
   toast("🎮 Solo practice — race any track, nothing is recorded.");
 };
 $("soloExitBtn").onclick=()=>{
-  soloMode=false;ptcGhostHide();ptcGhostShownKey=null;
+  soloMode=false;killBoost();ptcGhostHide();ptcGhostShownKey=null;
   view("loginView");refreshUI();
 };
 $("resultsBtn").onclick=()=>{resultsUnseen=false;openResultsView();};
+/* Solo car import/export: the pasted code becomes THIS browser's solo car.
+   A class never imports — its car always comes from the class doc. */
+$("soloImportBtn").onclick=()=>{
+  const r=importCarCode($("soloImportBox").value);
+  if(!r.ok)return toast(r.msg);
+  if(!applySoloCar(r.pack))return toast("Importing only works in Solo practice — leave your class first.");
+  toast(`🚗 Car imported! ${r.pack.up.length} upgrades, tuning and paint now apply in solo practice.`);
+};
+$("soloExportBtn").onclick=()=>{
+  const code=buildCarExport();
+  $("soloImportBox").value=code;
+  try{navigator.clipboard&&navigator.clipboard.writeText(code).then(()=>toast("📋 Car code copied — paste it anywhere you can play solo.")).catch(()=>{});}catch(e){}
+  toast("📤 Car code is in the box above (and copied if your browser allows).");
+};
+$("soloClearCarBtn").onclick=()=>{
+  saveSoloCar(null);
+  resetCarColors();
+  refreshUI();
+  toast("♻️ Solo car reset to stock.");
+};
 
 /* ---------------- join ---------------- */
 $("joinBtn").onclick=async()=>{
-  soloMode=false;   // joining a class always leaves solo practice
+  soloMode=false;killBoost();   // joining a class always leaves solo practice
   const code=$("joinCode").value.trim().toUpperCase();
   const name=$("joinName").value.trim();
   if(!/^[A-Z0-9]{4,8}$/.test(code))return toast("Enter the join code your teacher gave you.");
@@ -2348,8 +2470,18 @@ function renderSoloUI(){
     $("lobbyStatus").textContent="Free racing — nothing recorded";
     $("lockCard").classList.add("hidden");
     $("goCard").classList.remove("hidden");
-    $("lobbyMode").textContent="🎮 Solo practice — race any track, no quizzes, no results recorded.";
-    $("carPerfLine").textContent="🚗 Stock car — Garage upgrades need a class.";
+    $("lobbyMode").textContent="🎮 Solo practice — race any track, no quizzes, no results recorded. Import a class car code above to drive your class car here.";
+    /* The imported solo car (if any) drives the physics; its paint applies
+       (or the game default when the solo car has none — class paint never
+       leaks into solo). */
+    const sc=soloCar();
+    if(sc&&Array.isArray(sc.carColors)&&sc.carColors.length>=4)applyPaintsNow(sc.carColors);
+    else resetCarColors();   // no solo paint saved -> game default, class paint never leaks into solo
+    const cp=carPerf();
+    const hasCar=sc&&Array.isArray(sc.upgrades)&&sc.upgrades.length;
+    $("carPerfLine").innerHTML=hasCar
+      ?`🚗 Solo car (imported): accel ×${cp.accel.toFixed(2)} · top ×${cp.top.toFixed(2)} · grip ×${cp.grip.toFixed(2)} · brakes ×${(cp.brake||1).toFixed(2)}${cp.steer>1.01?` · steering ×${cp.steer.toFixed(2)}`:""}${cp.turbo>1?` · <b>⚡ turbo ×${cp.turbo} (SHIFT)</b>`:""}${cp.jump>0?` · <b>🚀 jump (SPACE)</b>`:""}<br><span class="small">♻️ Stock car button in the Solo card resets it.</span>`
+      :"🚗 Stock car — import a class car code in the Solo card to drive your class car here.";
     $("trackCard").classList.add("hidden");
     $("lbCard").classList.add("hidden");
     $("pickCard").classList.add("hidden");
@@ -2908,6 +3040,13 @@ function renderShop(){
     html+=`<div style="margin-top:12px"><button id="resetPerfBtn" class="primary">♻️ Reset all upgrades (+${refund} pts refund)</button>
     <div class="small" style="margin:4px 0 0">Sells back every performance upgrade, turbo and jump for a FULL points refund — paints, cosmetics and pit-stop stock are kept. Your tune settings are cleared too.</div></div></div>`;
   }
+  /* 📤 Export: pack this class car (upgrades + tuning + paint) into a code
+     the student can paste into Solo practice. Classes never import. */
+  if(me&&me.role==="student"&&classCode){
+    html+=`<div class="card" style="margin:8px 0"><div class="classrow"><div><b>📤 Export this car</b><div class="small" style="margin:0">Packs every upgrade, your tuning-slider settings and your paint into a code. Paste it into Solo practice to drive this exact car there — classes can't import, so it can't be used to change your class car.</div></div>
+    <button id="exportCarBtn" class="primary">Copy car code</button></div>
+    <textarea id="exportCarBox" class="hidden small" readonly style="width:100%;min-height:48px;box-sizing:border-box;resize:none;margin-top:8px" onclick="this.select()"></textarea></div>`;
+  }
   $("shopList").innerHTML=html||'<div class="small">The teacher has disabled the Garage.</div>';
   $$("#shopList [data-buy]").forEach(b=>b.onclick=()=>{
     /* Owned paints can be RE-APPLIED any time (free) — recolors the live car
@@ -2945,6 +3084,20 @@ function renderShop(){
       resetAllUpgrades();
     };
     resetBtn.dataset.orig=resetBtn.textContent;
+  }
+  const exportBtn=$("exportCarBtn");
+  if(exportBtn){
+    exportBtn.onclick=()=>{
+      const code=buildCarExport();
+      const box=$("exportCarBox");
+      if(box){box.value=code;box.classList.remove("hidden");}
+      try{
+        navigator.clipboard&&navigator.clipboard.writeText(code)
+          .then(()=>toast("📋 Car code copied — paste it into Solo practice to drive this car there."))
+          .catch(()=>{});
+      }catch(e){}
+      toast("📤 Car code shown below — copy it somewhere safe (it's also copied if your browser allows).");
+    };
   }
   const pick=$("accentPick");
   if(pick)pick.oninput=()=>{
@@ -3360,14 +3513,19 @@ function updateRaceHud(){
     const hud=$("raceHud");
     if(!hud)return;
     let show=false,html="";
-    if(me&&me.role==="student"&&classData&&isTracksMode()&&isRacingAllowed()){
+    /* Attempts left: tracks mode shows the teacher's per-track attempt
+       limit whenever the student is in the class — even while racing is
+       locked, so "No attempts left" is visible instead of the HUD hiding. */
+    if(me&&me.role==="student"&&classData&&isTracksMode()){
       show=true;
       const lim=limitForTrack();
       const used=(curTrackState().attempts)||0;
       const left=Math.max(0,lim-used);
       html+=left>0?`🏁 <b>Attempts left:</b> ${left}<br>`:`🏁 <b class="dim">No attempts left</b><br>`;
     }
-    if(me&&me.role==="student"&&isRacingAllowed()){
+    /* Ability readiness: class students AND solo practice (imported cars
+       can carry turbo/jump). */
+    if(soloMode||((me&&me.role==="student")&&isRacingAllowed())){
       const p=carPerf();
       if(p.turbo>1){
         show=true;
