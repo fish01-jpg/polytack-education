@@ -1280,19 +1280,24 @@ input[type="text"]:focus-visible {
 
 <main id="settingsView" class="hidden">
   <div class="eyebrow">SETTINGS</div>
-  <h2 style="margin:4px 0 10px">⚙️ Graphics & Performance</h2>
-  <div class="small" style="margin-bottom:10px">Tune the visuals to reduce lag on slow devices. Saved on this device only.</div>
-  <div class="field">
-    <label for="sunLevelRange" style="display:block;margin-bottom:4px">🌞 Sun brightness: <span id="sunLevelPct">100%</span></label>
-    <input type="range" id="sunLevelRange" min="0" max="200" value="100" style="width:100%">
+  <h2 style="margin:4px 0 10px">⚡ Performance & Lag Control</h2>
+  <div class="small" style="margin-bottom:10px">Tune the game to run smoothly on any device. Saved on this device only — everything applies LIVE, no reload. Turning ghost cars off hides them right away; when you turn them back on the classmate ghost returns immediately and the best-run ghost returns on your next run.</div>
+  <div class="card" style="margin:0 0 10px;padding:12px">
+    <div class="small" style="margin:0 0 8px"><b>Quick presets</b> — one tap for a whole setup:</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button data-gfxpreset="ultra" class="primary" style="flex:1;min-width:104px">🌟 Ultra</button>
+      <button data-gfxpreset="balanced" style="flex:1;min-width:104px">⚖️ Balanced</button>
+      <button data-gfxpreset="low" style="flex:1;min-width:104px">⚡ Low-lag</button>
+      <button data-gfxpreset="potato" style="flex:1;min-width:104px">🥔 Potato</button>
+    </div>
   </div>
   <div class="field">
-    <label style="display:block;margin-bottom:4px">🌑 Shadows <span class="small">(biggest lag lever)</span></label>
+    <label for="resLevelRange" style="display:block;margin-bottom:4px">🖥️ Render resolution: <span id="resLevelPct">100%</span> <span class="small">(biggest lag lever on weak devices)</span></label>
+    <input type="range" id="resLevelRange" min="40" max="100" step="5" value="100" style="width:100%">
+  </div>
+  <div class="field">
+    <label style="display:block;margin-bottom:4px">🌑 Shadows</label>
     <button id="shadowsToggle" style="width:100%">On</button>
-  </div>
-  <div class="field">
-    <label for="resLevelRange" style="display:block;margin-bottom:4px">🖥️ Resolution: <span id="resLevelPct">100%</span></label>
-    <input type="range" id="resLevelRange" min="50" max="100" step="5" value="100" style="width:100%">
   </div>
   <div class="field">
     <label style="display:block;margin-bottom:4px">💨 Particles (smoke & sparks)</label>
@@ -1302,8 +1307,19 @@ input[type="text"]:focus-visible {
     <label style="display:block;margin-bottom:4px">⛰️ Mountains & scenery</label>
     <button id="mountainsToggle" style="width:100%">On</button>
   </div>
+  <div class="field">
+    <label style="display:block;margin-bottom:4px">👤 Ghost cars <span class="small">(classmate + best-run ghosts)</span></label>
+    <button id="ghostsToggle" style="width:100%">On</button>
+  </div>
+  <div class="field">
+    <label for="sunLevelRange" style="display:block;margin-bottom:4px">🌞 Sun brightness: <span id="sunLevelPct">100%</span></label>
+    <input type="range" id="sunLevelRange" min="0" max="200" value="100" style="width:100%">
+  </div>
+  <div class="field">
+    <label style="display:block;margin-bottom:4px">📊 FPS meter <span class="small">(shows your live frame rate)</span></label>
+    <button id="fpsToggle" style="width:100%">Off</button>
+  </div>
   <div class="footer">
-    <button id="lowLagPreset" title="Shadows off, particles off, 75% resolution">⚡ Low-lag preset</button>
     <button id="restoreDefaults">↩️ Restore defaults</button>
     <button id="settingsBackBtn">← Back to class</button>
   </div>
@@ -1341,7 +1357,7 @@ input[type="text"]:focus-visible {
 
 <main id="teacherView" class="hidden">
   <div class="eyebrow">TEACHER CONSOLE</div>
-  <h2 style="margin:4px 0 10px">Quick controls</h2>
+  <h2 style="margin:4px 0 10px">Your classes</h2>
   <div class="card">
     <div class="field"><label for="newClassName">New class name</label><input id="newClassName" maxlength="60" placeholder="e.g. 3rd Hour Chemistry"></div>
     <button id="createClassBtn" class="primary">Create class</button>
@@ -1400,7 +1416,7 @@ const HOOKS={car:null,frameJobs:[],dead:new WeakSet()};   /* dead: Ammo objects 
   const origRAF=window.requestAnimationFrame&&window.requestAnimationFrame.bind(window);
   if(origRAF){
     window.requestAnimationFrame=cb=>origRAF(t=>{
-      let r;try{r=cb(t);}finally{for(let ji=0;ji<HOOKS.frameJobs.length;ji++){try{HOOKS.frameJobs[ji]();}catch(e){}}}
+      let r;try{r=cb(t);}finally{for(let ji=0;ji<HOOKS.frameJobs.length;ji++){try{HOOKS.frameJobs[ji](t);}catch(e){}}}
       return r;
     });
   }
@@ -1660,7 +1676,7 @@ function isDrifting(car){
    Jump Jets V adds a DOUBLE jump in mid-air. Both are pricey and gated
    behind the top levels on purpose — they're earned, not given. */
 const BOOST={turboUntil:0,turboMult:1,turboRun:-1,jumpNextAt:0,airJumps:0,
-  jetFuel:0,jetMax:0,jetRun:-1,jetOn:false};
+  jetFuel:0,jetMax:0,jetRun:-1,jetOn:false,jetCar:null};
 let lavaTouchAt=0;   // lava grass-reset throttle
 function turboActive(){return BOOST.jetOn;}
 function jetLevel(){return Math.min(5,upgradeLevel("turbo"));}
@@ -1675,35 +1691,81 @@ function jetRefill(){
 }
 function jetStart(){
   try{
-    if(RACE.phase!=="running")return;
-    if(jetLevel()<1)return;                      // no turbo upgrade
-    if(BOOST.jetRun!==RACE.runId)jetRefill();     // new round -> full tank
+    /* FIX: gate on a LIVE player car, not the DOM-timer race phase. The old
+       RACE.phase check silently killed the jet (and the jump below) whenever
+       the timer-text poll missed — solo practice, a DOM change, or a poll
+       hiccup. The abilities now fire whenever a real car is on the track. */
+    if(abilityInputBlocked())return;             // typing / question popup open
+    const car=livePlayerCar();
+    if(!car)return;                              // no live car (menu) -> nothing to push
+    if(jetLevel()<1)return abilityHint("jet");   // no turbo upgrade yet
+    if(BOOST.jetRun!==RACE.runId||BOOST.jetCar!==car)jetRefill();  // new round OR new car -> full tank
+    BOOST.jetCar=car;
     if(BOOST.jetFuel<=0)return toast("🚀 Jet fuel spent — it refills next round!");
     BOOST.jetOn=true;
     try{window.__PTC&&window.__PTC.jetSet(true,jetAccel());}catch(e){}
   }catch(e){}
 }
 function tryTurbo(){jetStart();}
+/* Shared activation guard: never fire SPACE/SHIFT while the student is
+   typing, or while a question popup (or any other modal) is open. */
+function abilityInputBlocked(){
+  try{
+    const el=document.activeElement;
+    if(el&&(el.tagName==="INPUT"||el.tagName==="TEXTAREA"||el.tagName==="SELECT"||el.isContentEditable))return true;
+  }catch(e){}
+  try{if(typeof popupOpen!=="undefined"&&popupOpen)return true;}catch(e){}
+  return false;
+}
+/* Gentle, throttled hint when SPACE/SHIFT is pressed without owning the
+   ability — the old code failed SILENTLY, which looked broken. */
+let __abilityHintAt=0;
+function abilityHint(kind){
+  const now=performance.now();
+  if(now-__abilityHintAt<4000)return;
+  __abilityHintAt=now;
+  toast(kind==="jet"?"🚀 No jet yet — buy Jet Turbo in the Garage!":"🚀 No jump yet — buy Jump Jets in the Garage!");
+}
 function tryJump(e){
   try{
-    if(RACE.phase!=="running")return;
+    /* Never fire while typing or while a question popup is open (SPACE must
+       type a space there, not jump the car). Same guard as the jet. */
+    if(abilityInputBlocked())return;
+    /* FIX: same live-car gate as the jet — SPACE works whenever a real car
+       exists, even if the timer-text poll never flagged a "running" race. */
     const car=livePlayerCar();
+    if(!car)return;                              // no live car -> ignore
     const p=carPerf();
-    if(!car||p.jump<1)return;   // no jump upgrade
+    if(p.jump<1)return abilityHint("jump");       // no jump upgrade yet
     if(e)e.preventDefault();   // only swallow SPACE when the jump actually fires
     if(e&&e.repeat)return;  // holding SPACE down never double-fires
     const now=performance.now();
     if(now<BOOST.jumpNextAt)return;
     /* Ground jump when the wheels touch; mid-air needs Jump Jets V (the
        double jump) and its own air-jump charge. */
-    let grounded=false;
+    /* Real contact only: read each wheel's raycast info via BOTH accessors
+       the Ammo build exposes (direct property — which the game itself uses —
+       and the generated get_m_raycastInfo() getter). */
+    let grounded=false,sawRaycast=false,allowAirCharge=true;
     try{
       const n=(typeof car.getNumWheels==="function")?car.getNumWheels():4;
       for(let i=0;i<n;i++){
         const w=car.getWheelInfo&&car.getWheelInfo(i);
-        if(w&&w.m_raycastInfo&&w.m_raycastInfo.m_isInContact){grounded=true;break;}
+        const ri=w&&(w.m_raycastInfo||(w.get_m_raycastInfo&&w.get_m_raycastInfo()));
+        if(ri){
+          sawRaycast=true;
+          if(ri.m_isInContact){grounded=true;break;}
+        }
       }
     }catch(_e){}
+    if(!grounded&&!sawRaycast){
+      /* Fallback ONLY when the contact API is entirely unreadable (a build
+         where contact simply cannot be read): allow the ground-pop impulse so
+         the ability doesn't fail silently, but NEVER grant the mid-air
+         double-jump charge from a blind guess, so it cannot be chained. */
+      grounded=true;
+      allowAirCharge=false;
+    }
     if(!grounded){
       if(p.jump<5)return;               // double jump = Jump Jets V only
       if((BOOST.airJumps||0)<1)return;   // air charge already spent
@@ -1714,7 +1776,7 @@ function tryJump(e){
     const dv=8+2*p.jump;
     const imp=new window.Ammo.btVector3(0,400*dv,0);
     try{b.applyCentralImpulse(imp);}finally{try{window.Ammo.destroy(imp);}catch(_e){}}
-    if(grounded){BOOST.airJumps=(p.jump>=5)?1:0;BOOST.jumpNextAt=now+1200;}
+    if(grounded){BOOST.airJumps=(p.jump>=5&&allowAirCharge)?1:0;BOOST.jumpNextAt=now+1200;}
     else{BOOST.airJumps=0;BOOST.jumpNextAt=now+450;}
   }catch(e){}
 }
@@ -1797,6 +1859,20 @@ HOOKS.frameJobs.push(function carFeelFrameJob(){
     }
     /* AIR-JUMP charge: touching the ground re-arms the double jump. */
     if(grounded&&carPerf().jump>=5)BOOST.airJumps=1;
+    /* JET THRUST FALLBACK: the game bundle applies the thrust impulse in its
+       own update loop via __PTC.jetSet. If this build's bridge lacks jetSet,
+       apply the thrust ourselves every frame so SHIFT always pushes the car. */
+    if(BOOST.jetOn&&!(window.__PTC&&typeof window.__PTC.jetSet==="function")){
+      try{
+        const q=car.getChassisWorldTransform().getRotation();
+        const qx2=q.x(),qy2=q.y(),qz2=q.z(),qw2=q.w();
+        const fx2=2*(qx2*qz2+qw2*qy2),fy2=2*(qy2*qz2-qw2*qx2),fz2=1-2*(qx2*qx2+qy2*qy2);
+        let mass2=400;try{mass2=b.getMass()||400;}catch(_m){}
+        const s2=jetAccel()*mass2*0.016;
+        const imp2=new window.Ammo.btVector3(fx2*s2,fy2*s2,fz2*s2);
+        try{b.applyCentralImpulse(imp2);}finally{try{window.Ammo.destroy(imp2);}catch(_m2){}}
+      }catch(_e3){}
+    }
     /* JET fuel drain: burn while on; empty = done for the round. */
     if(BOOST.jetOn){
       const now=performance.now();
@@ -1951,7 +2027,7 @@ function resetCarPerf(){
       }
     }catch(e){}
   }
-  BOOST.turboUntil=0;BOOST.turboRun=-1;BOOST.jumpNextAt=0;   // abilities reset too
+  BOOST.turboUntil=0;BOOST.turboRun=-1;BOOST.jumpNextAt=0;BOOST.jetCar=null;   // abilities reset too
   carPerfState={key:"",at:0,car:null,base:null,ok:false};
 }
 
@@ -2873,8 +2949,8 @@ async function loadTeacherClasses(){
     $("teacherClasses").innerHTML=snap.empty?'<div class="small">No classes yet — create one above.</div>':
       snap.docs.map(d=>{const c=d.data();const on=c.settings&&c.settings.classroomMode;
         return `<div class="card"><div class="classrow"><b>${esc(c.name||d.id)}</b><span class="key">${d.id}</span></div>
-        <div class="small">Classroom mode: ${on?"<b style='color:var(--good)'>ON</b>":"off"}</div>
-        <div class="row"><button data-code="${d.id}" data-on="${on?1:0}" class="modeToggle">${on?"End class":"Start class"}</button>
+        <div class="small" style="margin:6px 0 0"><span style="display:inline-block;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;background:${on?"#064e3b":"#334155"};color:${on?"var(--good)":"var(--muted)"}">${on?"Classroom mode ON":"Classroom mode off"}</span></div>
+        <div class="row"><button data-code="${d.id}" data-on="${on?1:0}" class="modeToggle primary">${on?"End class":"Start class"}</button>
         <button data-open="1" class="openDash2">Open dashboard</button></div></div>`;}).join("");
     $$("#teacherClasses .modeToggle").forEach(b=>b.onclick=async()=>{
       try{await db.collection("classes").doc(b.dataset.code).update({"settings.classroomMode":b.dataset.on==="1"?false:true});loadTeacherClasses();}
@@ -3722,6 +3798,50 @@ $("garageBtn").onclick=()=>{
   renderShop();
 };
 $("shopBackBtn").onclick=()=>{view("lobbyView");refreshUI();};
+/* ONE BUTTON PER UPGRADE FAMILY: every level of a ladder (Engine I..XII,
+   Jump Jets I..V, ...) is now a single card with a single Upgrade button —
+   click the SAME button again and again to keep leveling up. The button
+   always buys the NEXT un-owned level. The catalog and purchase logic are
+   unchanged underneath, so existing purchases keep working. */
+function perfFamilies(){
+  const byId={};
+  SHOP_CATALOG.forEach(it=>{
+    if(it.cat!=="perf")return;
+    const m=it.id.match(/^(.*?)(\d+)$/);
+    if(!m)return;
+    if(!byId[m[1]])byId[m[1]]={key:m[1],items:[]};
+    byId[m[1]].items.push(it);
+  });
+  Object.values(byId).forEach(f=>f.items.sort((a,b)=>parseInt(a.id.slice(f.key.length))-parseInt(b.id.slice(f.key.length))));
+  const order=["engine","tires","aero","brakes","trans","weight","susp","steer","turbo","jump","wallDrift"];
+  const fams=[];
+  order.forEach(k=>{if(byId[k])fams.push(byId[k]);});
+  Object.keys(byId).forEach(k=>{if(!order.includes(k))fams.push(byId[k]);});
+  return fams;
+}
+function renderPerfFamilies(){
+  const mine=myUpgrades();
+  let html="";
+  perfFamilies().forEach(f=>{
+    const owned=f.items.filter(it=>mine.includes(it.id)).length;
+    const next=f.items[owned];              // next un-owned level (undefined = MAX)
+    const maxed=owned>=f.items.length;
+    const famName=(next||f.items[f.items.length-1]).name.replace(/\s+(XII|XI|X|IX|VIII|VII|VI|V|IV|III|II|I)$/,"").trim();
+    const desc=(maxed?f.items[f.items.length-1].desc:next.desc).replace(/\s*\(needs[^)]*\)/g,"");
+    const pips=f.items.map((_,i)=>`<span style="display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:3px;background:${i<owned?"var(--accent)":"#3a4a63"}"></span>`).join("");
+    html+=`<div class="card" style="margin:8px 0"><div class="classrow">
+      <div style="min-width:0"><b>${famName}</b>
+      <div class="small" style="margin:2px 0 0">${desc}</div>
+      <div style="margin-top:6px">${pips}<span class="small">Level ${owned}/${f.items.length}</span></div></div>
+      <div style="text-align:right;white-space:nowrap">
+        ${maxed
+          ?`<button class="primary" disabled>✅ MAX</button>`
+          :`<button data-buy="${next.id}" class="primary">⬆ Upgrade · ${shopCost(next)} pts</button>`}
+      </div>
+    </div></div>`;
+  });
+  return html;
+}
 function renderShop(){
   const s=S();
   $("shopPoints").textContent=`🛒 Garage — ${(meData&&meData.points)||0} pts`;
@@ -3732,6 +3852,7 @@ function renderShop(){
   cats.forEach(([cat,title,allowed])=>{
     if(allowed===false)return;
     html+=`<div class="eyebrow">${title}</div>`;
+    if(cat==="perf"){html+=renderPerfFamilies();return;}
     SHOP_CATALOG.filter(i=>i.cat===cat).forEach(item=>{
       const cost=shopCost(item);
       const owned=mine.includes(item.id);
@@ -4220,7 +4341,7 @@ HOOKS.frameJobs.push(function frameJob(){
       const G=window.__PTC.gfxGet();
       if(G&&G.renderer!==window.__ptcLastGfxR){
         window.__ptcLastGfxR=G.renderer;
-        gfxApply(gfxLoad());
+        GFX_NOW=gfxLoad();gfxApply(GFX_NOW);
       }
     }catch(e){}
   }
@@ -4230,7 +4351,49 @@ HOOKS.frameJobs.push(function frameJob(){
    Per-device localStorage (NOT class Firestore): shadows, sun brightness,
    resolution, particles, mountains. Live-applied through the bundle bridge. */
 const GFX_KEY="ptc-gfx-settings";
-function gfxDefaults(){return {sun:1,shadows:true,res:1,particles:true,mountains:true};}
+function gfxDefaults(){return {sun:1,shadows:true,res:1,particles:true,mountains:true,ghosts:true,fps:false};}
+/* Cached copy of the current gfx settings (updated on load/change) so the
+   per-frame ghost logic can read them without touching localStorage. */
+let GFX_NOW=gfxDefaults();
+/* FPS meter: a tiny overlay counting real animation frames. IMPORTANT: it
+   must NOT schedule its own requestAnimationFrame — this page PATCHES rAF to
+   run every frame job after every callback, so a private loop would double
+   the physics work. Instead the counter piggybacks on the existing frame-job
+   path (one execution = one animation-frame callback). */
+let __fpsDiv=null,__fpsN=0,__fpsT0=0;
+function fpsMeterSet(on){
+  try{
+    if(on){
+      if(!__fpsDiv){
+        __fpsDiv=document.createElement("div");
+        __fpsDiv.style.cssText="position:fixed;top:8px;right:8px;z-index:99999;background:#0b1220d9;color:#a5f3fc;border:1px solid #475569;border-radius:8px;padding:4px 10px;font:700 13px/1.4 system-ui,sans-serif;pointer-events:none";
+        document.body.appendChild(__fpsDiv);
+        if(!fpsMeterSet.jobInstalled){
+          fpsMeterSet.jobInstalled=true;
+          HOOKS.frameJobs.push(function fpsCountJob(t){
+            if(!__fpsDiv||__fpsDiv.style.display==="none")return;
+            /* Count once per UNIQUE animation-frame timestamp — several rAF
+               callbacks in one frame share the timestamp and must not
+               inflate the reading. */
+            if(t===fpsCountJob.lastT)return;
+            fpsCountJob.lastT=t;
+            __fpsN++;
+            const now=performance.now();
+            if(!__fpsT0)__fpsT0=now;
+            if(now-__fpsT0>=500){
+              const fps=Math.round(__fpsN*1000/(now-__fpsT0));
+              __fpsDiv.textContent=fps+" FPS"+(fps<25?" ⚠️":"");
+              __fpsN=0;__fpsT0=now;
+            }
+          });
+        }
+      }
+      __fpsDiv.style.display="block";
+    }else if(__fpsDiv){
+      __fpsDiv.style.display="none";
+    }
+  }catch(e){}
+}
 function gfxLoad(){
   let s=gfxDefaults();
   try{
@@ -4247,6 +4410,11 @@ function gfxApply(s){
   try{window.__PTC.gfxSetResolution(s.res);}catch(e){}
   try{window.__PTC.gfxSetParticles(s.particles);}catch(e){}
   try{window.__PTC.gfxSetMountains(s.mountains);}catch(e){}
+  /* Ghosts off = no classmate/best-run ghost cars rendered (big save when
+     the class is full of ghost replays). Re-enabling re-attaches them. */
+  try{window.__PTC.setNativeGhostOff&&window.__PTC.setNativeGhostOff(s.ghosts===false);}catch(e){}
+  if(s.ghosts===false){try{ptcGhostHide();ptcGhostShownKey=null;}catch(e){}}
+  try{fpsMeterSet(!!s.fps);}catch(e){}
 }
 function gfxApplyUI(s){
   $("sunLevelRange").value=Math.round(s.sun*100);
@@ -4259,11 +4427,14 @@ function gfxApplyUI(s){
   $("particlesToggle").style.opacity=s.particles?"1":"0.55";
   $("mountainsToggle").textContent=s.mountains?"On":"Off";
   $("mountainsToggle").style.opacity=s.mountains?"1":"0.55";
+  const gt=$("ghostsToggle");if(gt){gt.textContent=s.ghosts!==false?"On":"Off";gt.style.opacity=s.ghosts!==false?"1":"0.55";}
+  const ft=$("fpsToggle");if(ft){ft.textContent=s.fps?"On":"Off";ft.style.opacity=s.fps?"1":"0.55";}
 }
 function openSettingsView(){
   view("settingsView");
   $("app").classList.add("open");
-  gfxApplyUI(gfxLoad());
+  GFX_NOW=gfxLoad();
+  gfxApplyUI(GFX_NOW);
 }
 $("settingsBtn").onclick=openSettingsView;
 $("settingsBackBtn").onclick=()=>{view("lobbyView");};
@@ -4273,7 +4444,10 @@ $("settingsBackBtn").onclick=()=>{view("lobbyView");};
       shadows:$("shadowsToggle").textContent==="On",
       res:parseInt($("resLevelRange").value,10)/100,
       particles:$("particlesToggle").textContent==="On",
-      mountains:$("mountainsToggle").textContent==="On"};
+      mountains:$("mountainsToggle").textContent==="On",
+      ghosts:$("ghostsToggle").textContent!=="Off",
+      fps:$("fpsToggle").textContent==="On"};
+    GFX_NOW=s;
     gfxSave(s);gfxApply(s);
     $("sunLevelPct").textContent=Math.round(s.sun*100)+"%";
     $("resLevelPct").textContent=Math.round(s.res*100)+"%";
@@ -4283,13 +4457,24 @@ $("settingsBackBtn").onclick=()=>{view("lobbyView");};
   $("shadowsToggle").onclick=()=>{const b=$("shadowsToggle");b.textContent=b.textContent==="On"?"Off":"On";upd();};
   $("particlesToggle").onclick=()=>{const b=$("particlesToggle");b.textContent=b.textContent==="On"?"Off":"On";upd();};
   $("mountainsToggle").onclick=()=>{const b=$("mountainsToggle");b.textContent=b.textContent==="On"?"Off":"On";upd();};
-  $("lowLagPreset").onclick=()=>{
-    const s=gfxDefaults();s.shadows=false;s.particles=false;s.res=0.75;
-    gfxSave(s);gfxApply(s);gfxApplyUI(s);
-    toast("⚡ Low-lag preset applied — shadows & particles off, 75% resolution");
-  };
+  $("ghostsToggle").onclick=()=>{const b=$("ghostsToggle");b.textContent=b.textContent==="On"?"Off":"On";upd();};
+  $("fpsToggle").onclick=()=>{const b=$("fpsToggle");b.textContent=b.textContent==="On"?"Off":"On";upd();};
+  /* Quick presets: one tap sets every lever at once. */
+  $$("#settingsView [data-gfxpreset]").forEach(btn=>{
+    btn.onclick=()=>{
+      const p=btn.dataset.gfxpreset;
+      const s=gfxDefaults();
+      if(p==="balanced"){s.res=0.85;}
+      else if(p==="low"){s.sun=0.8;s.shadows=false;s.res=0.75;s.particles=false;}
+      else if(p==="potato"){s.sun=0.6;s.shadows=false;s.res=0.4;s.particles=false;s.mountains=false;s.ghosts=false;}
+      GFX_NOW=s;
+      gfxSave(s);gfxApply(s);gfxApplyUI(s);
+      toast(p==="ultra"?"🌟 Ultra preset applied — everything on":p==="balanced"?"⚖️ Balanced preset applied — 85% resolution":p==="low"?"⚡ Low-lag preset applied — shadows & particles off, 75% resolution":"🥔 Potato preset applied — max savings, ghosts hidden");
+    };
+  });
   $("restoreDefaults").onclick=()=>{
     const s=gfxDefaults();
+    GFX_NOW=s;
     gfxSave(s);gfxApply(s);gfxApplyUI(s);
     toast("↩️ Graphics restored to defaults");
   };
@@ -4297,7 +4482,7 @@ $("settingsBackBtn").onclick=()=>{view("lobbyView");};
      bridge exists — the module script loads after this overlay) */
   const boot=()=>{
     if(window.__PTC&&window.__PTC.gfxSetSun&&window.__PTC.gfxGet&&window.__PTC.gfxGet()){
-      gfxApply(gfxLoad());
+      GFX_NOW=gfxLoad();gfxApply(GFX_NOW);
       return true;
     }
     return false;
@@ -4341,6 +4526,11 @@ let ptcLastGhostPid=undefined;   // tracks player car restarts (ghost must re-at
 function ptcGhostShowing(){return ptcGhostShownKey!=null;}
 function syncPtcGhost(){
   try{
+    /* Lag setting: ghost cars turned off in Settings -> keep them hidden. */
+    if(GFX_NOW.ghosts===false){
+      if(ptcGhostShownKey!=null){ptcGhostHide();ptcGhostShownKey=null;}
+      return;
+    }
     const g=(racePick&&pickGhost&&Array.isArray(pickGhost.samples)&&pickGhost.samples.length>=8)?pickGhost:null;
     if(!g){if(ptcGhostShownKey!=null){ptcGhostHide();ptcGhostShownKey=null;}return;}
     /* Only show the classmate on the course they recorded: the trajectory's
