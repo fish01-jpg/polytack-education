@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Poly Track Classroom</title><style>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Poly Track Classroom</title>
+<style>
 :root {
   --bg:#111827; --panel:#1f2937; --panel2:#273449;
   --text:#f3f4f6; --muted:#aab6c8; --accent:#8b5cf6;
@@ -110,6 +111,15 @@ color:var(--text);line-height:1.6;display:none;pointer-events:none;max-width:230
 #raceHud b{font-weight:700}
 #raceHud .dim{opacity:.45}
 #raceHud .good{color:var(--good)}
+/* Bottom-left in-race HUD: jet/jump ability readiness. Kept separate from
+   #raceHud (top-left) so the attempt counter never overlaps. */
+#powerHud{position:fixed;left:14px;bottom:14px;z-index:1000000;background:#0f172aee;
+border:1px solid var(--border);border-radius:12px;padding:8px 12px;font-size:12px;
+color:var(--text);line-height:1.6;display:none;pointer-events:none;max-width:230px}
+#powerHud.show{display:block}
+#powerHud b{font-weight:700}
+#powerHud .dim{opacity:.45}
+#powerHud .good{color:var(--good)}
 /* The game's own top button bar (div.editor > div.top > div.button-bar,
    68px tall, opaque background) moves to the BOTTOM-left so the classroom
    HUD owns the top-left corner. */
@@ -1123,6 +1133,7 @@ input[type="text"]:focus-visible {
 	
 		<canvas id="screen" data-engine="three.js r150" width="150" height="649" style="touch-action: none; width: 150px; height: 649px;"></canvas>
 <div id="raceHud"></div>
+<div id="powerHud"></div>
 		<div id="ui"><div class="hidden">FPS: 1</div><div class="hint show">Press [R] or [ENTER] to restart</div><div class="hidden"><div class="background"></div><div class="box"><p></p><button class="button"></button><button class="button"></button></div></div><div class="hidden"><div class="background"></div><div class="box"><div class="bar"><button class="button"><img class="button-icon" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+DQo8c3ZnDQogICB3aWR0aD0iMjQiDQogICBoZWlnaHQ9IjI0Ig0KICAgdmlld0JveD0iMCAwIDI0IDI0Ig0KICAgdmVyc2lvbj0iMS4xIg0KICAgaWQ9InN2ZzQiDQogICBzb2RpcG9kaTpkb2NuYW1lPSJiYWNrLnN2ZyINCiAgIGlua3NjYXBlOnZlcnNpb249IjEuMi4xICg5YzZkNDFlNDEwLCAyMDIyLTA3LTE0KSINCiAgIHhtbG5zOmlua3NjYXBlPSJodHRwOi8vd3d3Lmlua3NjYXBlLm9yZy9uYW1lc3BhY2VzL2lua3NjYXBlIg0KICAgeG1sbnM6c29kaXBvZGk9Imh0dHA6Ly9zb2RpcG9kaS5zb3VyY2Vmb3JnZS5uZXQvRFREL3NvZGlwb2RpLTAuZHRkIg0KICAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIg0KICAgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+DQogIDxkZWZzDQogICAgIGlkPSJkZWZzOCIgLz4NCiAgPHNvZGlwb2RpOm5hbWVkdmlldw0KICAgICBpZD0ibmFtZWR2aWV3NiINCiAgICAgcGFnZWNvbG9yPSIjZmZmZmZmIg0KICAgICBib3JkZXJjb2xvcj0iIzAwMDAwMCINCiAgICAgYm9yZGVyb3BhY2l0eT0iMC4yNSINCiAgICAgaW5rc2NhcGU6c2hvd3BhZ2VzaGFkb3c9IjIiDQogICAgIGlua3NjYXBlOnBhZ2VvcGFjaXR5PSIwLjAiDQogICAgIGlua3NjYXBlOnBhZ2VjaGVja2VyYm9hcmQ9IjAiDQogICAgIGlua3NjYXBlOmRlc2tjb2xvcj0iI2QxZDFkMSINCiAgICAgc2hvd2dyaWQ9ImZhbHNlIg0KICAgICBpbmtzY2FwZTp6b29tPSI0Mi43OTE2NjciDQogICAgIGlua3NjYXBlOmN4PSIxMS4wNjUyMzkiDQogICAgIGlua3NjYXBlOmN5PSIxMS45ODgzMTUiDQogICAgIGlua3NjYXBlOndpbmRvdy13aWR0aD0iMjU2MCINCiAgICAgaW5rc2NhcGU6d2luZG93LWhlaWdodD0iMTM2OSINCiAgICAgaW5rc2NhcGU6d2luZG93LXg9Ii04Ig0KICAgICBpbmtzY2FwZTp3aW5kb3cteT0iLTgiDQogICAgIGlua3NjYXBlOndpbmRvdy1tYXhpbWl6ZWQ9IjEiDQogICAgIGlua3NjYXBlOmN1cnJlbnQtbGF5ZXI9InN2ZzQiIC8+DQogIDxwYXRoDQogICAgIGQ9Im0gMTAuNDE2NzQ4LDQuMDgzNzM5IGggNS43MjI2NjUgTCAxMC41ODY5NDcsOS42MjUxMjE3IEggMjEuNDk5NTEzIFYgMTQuMzc0ODc4IEggMTAuNTg2OTQ3IGwgNS41NTI0NjYsNS41NDEzODMgSCAxMC40MTY3NDggTCAyLjUwMDQ4NjksMTIgWiINCiAgICAgaWQ9InBhdGgyIg0KICAgICBzdHlsZT0iZmlsbDojZmZmZmZmO2ZpbGwtb3BhY2l0eToxO3N0cm9rZS13aWR0aDowLjc5MTYyNiIgLz4NCjwvc3ZnPg0K"> Back</button><button class="hidden"><img class="button-icon" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+DQo8c3ZnDQogICB3aWR0aD0iMjQiDQogICBoZWlnaHQ9IjI0Ig0KICAgdmlld0JveD0iMCAwIDI0IDI0Ig0KICAgdmVyc2lvbj0iMS4xIg0KICAgaWQ9InN2ZzQiDQogICBzb2RpcG9kaTpkb2NuYW1lPSJjb3B5LnN2ZyINCiAgIGlua3NjYXBlOnZlcnNpb249IjEuMi4xICg5YzZkNDFlNDEwLCAyMDIyLTA3LTE0KSINCiAgIHhtbG5zOmlua3NjYXBlPSJodHRwOi8vd3d3Lmlua3NjYXBlLm9yZy9uYW1lc3BhY2VzL2lua3NjYXBlIg0KICAgeG1sbnM6c29kaXBvZGk9Imh0dHA6Ly9zb2RpcG9kaS5zb3VyY2Vmb3JnZS5uZXQvRFREL3NvZGlwb2RpLTAuZHRkIg0KICAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIg0KICAgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+DQogIDxkZWZzDQogICAgIGlkPSJkZWZzOCIgLz4NCiAgPHNvZGlwb2RpOm5hbWVkdmlldw0KICAgICBpZD0ibmFtZWR2aWV3NiINCiAgICAgcGFnZWNvbG9yPSIjZmZmZmZmIg0KICAgICBib3JkZXJjb2xvcj0iIzAwMDAwMCINCiAgICAgYm9yZGVyb3BhY2l0eT0iMC4yNSINCiAgICAgaW5rc2NhcGU6c2hvd3BhZ2VzaGFkb3c9IjIiDQogICAgIGlua3NjYXBlOnBhZ2VvcGFjaXR5PSIwLjAiDQogICAgIGlua3NjYXBlOnBhZ2VjaGVja2VyYm9hcmQ9IjAiDQogICAgIGlua3NjYXBlOmRlc2tjb2xvcj0iI2QxZDFkMSINCiAgICAgc2hvd2dyaWQ9ImZhbHNlIg0KICAgICBpbmtzY2FwZTp6b29tPSI0Mi43OTE2NjciDQogICAgIGlua3NjYXBlOmN4PSIxMS40MzkxNDMiDQogICAgIGlua3NjYXBlOmN5PSIxMS45ODgzMTUiDQogICAgIGlua3NjYXBlOndpbmRvdy13aWR0aD0iMjU2MCINCiAgICAgaW5rc2NhcGU6d2luZG93LWhlaWdodD0iMTM2OSINCiAgICAgaW5rc2NhcGU6d2luZG93LXg9Ii04Ig0KICAgICBpbmtzY2FwZTp3aW5kb3cteT0iLTgiDQogICAgIGlua3NjYXBlOndpbmRvdy1tYXhpbWl6ZWQ9IjEiDQogICAgIGlua3NjYXBlOmN1cnJlbnQtbGF5ZXI9InN2ZzQiIC8+DQogIDxwYXRoDQogICAgIHN0eWxlPSJmaWxsOiNmZmZmZmY7c3Ryb2tlLXdpZHRoOjAuNzUyNjc4Ig0KICAgICBkPSJNIDIxLjAzMjEzMiw1Ljk3ODU3ODQgSCA1Ljk3ODU3ODQgViAyMS4wMzIxMzIgSCAyMS4wMzIxMzIgWiBNIDIuOTY3ODY3NiwxOC43NzQwOTkgViAyLjk2Nzg2NzYgSCAxOC43NzQwOTkgViA0LjQ3MzIyMyBIIDQuNDczMjIzIHYgMTQuMzAwODc2IHoiDQogICAgIGlkPSJwYXRoMiIgLz4NCjwvc3ZnPg0K"> Copy</button><button class="hidden"><img class="button-icon" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+DQo8c3ZnDQogICB3aWR0aD0iMjQiDQogICBoZWlnaHQ9IjI0Ig0KICAgZmlsbC1ydWxlPSJldmVub2RkIg0KICAgY2xpcC1ydWxlPSJldmVub2RkIg0KICAgdmVyc2lvbj0iMS4xIg0KICAgaWQ9InN2ZzQiDQogICBzb2RpcG9kaTpkb2NuYW1lPSJpbXBvcnQuc3ZnIg0KICAgaW5rc2NhcGU6dmVyc2lvbj0iMS4yLjEgKDljNmQ0MWU0MTAsIDIwMjItMDctMTQpIg0KICAgeG1sbnM6aW5rc2NhcGU9Imh0dHA6Ly93d3cuaW5rc2NhcGUub3JnL25hbWVzcGFjZXMvaW5rc2NhcGUiDQogICB4bWxuczpzb2RpcG9kaT0iaHR0cDovL3NvZGlwb2RpLnNvdXJjZWZvcmdlLm5ldC9EVEQvc29kaXBvZGktMC5kdGQiDQogICB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciDQogICB4bWxuczpzdmc9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4NCiAgPGRlZnMNCiAgICAgaWQ9ImRlZnM4IiAvPg0KICA8c29kaXBvZGk6bmFtZWR2aWV3DQogICAgIGlkPSJuYW1lZHZpZXc2Ig0KICAgICBwYWdlY29sb3I9IiNmZmZmZmYiDQogICAgIGJvcmRlcmNvbG9yPSIjMDAwMDAwIg0KICAgICBib3JkZXJvcGFjaXR5PSIwLjI1Ig0KICAgICBpbmtzY2FwZTpzaG93cGFnZXNoYWRvdz0iMiINCiAgICAgaW5rc2NhcGU6cGFnZW9wYWNpdHk9IjAuMCINCiAgICAgaW5rc2NhcGU6cGFnZWNoZWNrZXJib2FyZD0iMCINCiAgICAgaW5rc2NhcGU6ZGVza2NvbG9yPSIjZDFkMWQxIg0KICAgICBzaG93Z3JpZD0iZmFsc2UiDQogICAgIGlua3NjYXBlOnpvb209IjQyLjc5MTY2NyINCiAgICAgaW5rc2NhcGU6Y3g9IjExLjQzOTE0MyINCiAgICAgaW5rc2NhcGU6Y3k9IjExLjk4ODMxNSINCiAgICAgaW5rc2NhcGU6d2luZG93LXdpZHRoPSIyNTYwIg0KICAgICBpbmtzY2FwZTp3aW5kb3ctaGVpZ2h0PSIxMzY5Ig0KICAgICBpbmtzY2FwZTp3aW5kb3cteD0iLTgiDQogICAgIGlua3NjYXBlOndpbmRvdy15PSItOCINCiAgICAgaW5rc2NhcGU6d2luZG93LW1heGltaXplZD0iMSINCiAgICAgaW5rc2NhcGU6Y3VycmVudC1sYXllcj0ic3ZnNCIgLz4NCiAgPHBhdGgNCiAgICAgc3R5bGU9ImZpbGw6I2ZmZmZmZjtzdHJva2Utd2lkdGg6MC43ODE4ODkiDQogICAgIGQ9Ik0gOC44NzI0NDQsMTEuMjE4MTExIEggNC4xODExMSB2IDcuODE4ODkgaCAxNS42Mzc3OCB2IC03LjgxODg5IEggMTUuMTI3NTU2IFYgOS42NTQzMzMgaCA2LjI1NTExMiBWIDIwLjYwMDc3OSBIIDIuNjE3MzMyIFYgOS42NTQzMzMgaCA2LjI1NTExMiB6IG0gMy45MDk0NDUsMS41NjM3NzggaCAzLjEyNzU1NiBMIDEyLDE3LjQ3MzIyMyA4LjA5MDU1NSwxMi43ODE4ODkgaCAzLjEyNzU1NiBWIDMuMzk5MjIxIGggMS41NjM3NzggeiINCiAgICAgaWQ9InBhdGgyIiAvPg0KPC9zdmc+DQo="> Import</button></div><textarea spellcheck="false"></textarea></div></div><div class="speedometer"><div><span><span>0</span></span><span>km/h</span></div></div><div class="hidden"><div class="hidden">New record</div><div class="current"></div><p></p></div><div class="timer"><div class="left"><h2>Record</h2><div><p class="small center"><span>-</span><span>-</span><span>-</span></p></div></div><div class="center"><h2>Current</h2><div><p><span>0</span><span>0</span><span>:</span><span>1</span><span>2</span><span>.</span><span>0</span><span>3</span><span>3</span></p></div></div><div class="right"><h2>Difference</h2><div><p class="small center"><span>-</span><span>-</span><span>-</span></p></div></div></div><div class="hidden"><div class="top"><button class="button"><img class="button-icon" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGZpbGw9IiNmZmZmZmYiIGQ9Ik0yMCAyM2gydjFoLTIwdi0xaDJ2LTIzaDE2djIzem0tMS0yMmgtMTR2MjJoMTRsLTEwLTEuOTU0di0xOC4wMTVsMTAtMi4wMzF6bS03IDExaC0ydjFoMnYtMXoiLz48L3N2Zz4="> Exit</button><button class="button"><img class="button-icon" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+DQo8c3ZnDQogICBjbGlwLXJ1bGU9ImV2ZW5vZGQiDQogICBmaWxsLXJ1bGU9ImV2ZW5vZGQiDQogICBzdHJva2UtbGluZWpvaW49InJvdW5kIg0KICAgc3Ryb2tlLW1pdGVybGltaXQ9IjIiDQogICB2aWV3Qm94PSIwIDAgMjQgMjQiDQogICB2ZXJzaW9uPSIxLjEiDQogICBpZD0ic3ZnNCINCiAgIHNvZGlwb2RpOmRvY25hbWU9InJhbmRvbS5zdmciDQogICBpbmtzY2FwZTp2ZXJzaW9uPSIxLjIuMSAoOWM2ZDQxZTQxMCwgMjAyMi0wNy0xNCkiDQogICB4bWxuczppbmtzY2FwZT0iaHR0cDovL3d3dy5pbmtzY2FwZS5vcmcvbmFtZXNwYWNlcy9pbmtzY2FwZSINCiAgIHhtbG5zOnNvZGlwb2RpPSJodHRwOi8vc29kaXBvZGkuc291cmNlZm9yZ2UubmV0L0RURC9zb2RpcG9kaS0wLmR0ZCINCiAgIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyINCiAgIHhtbG5zOnN2Zz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPg0KICA8ZGVmcw0KICAgICBpZD0iZGVmczgiIC8+DQogIDxzb2RpcG9kaTpuYW1lZHZpZXcNCiAgICAgaWQ9Im5hbWVkdmlldzYiDQogICAgIHBhZ2Vjb2xvcj0iI2ZmZmZmZiINCiAgICAgYm9yZGVyY29sb3I9IiMwMDAwMDAiDQogICAgIGJvcmRlcm9wYWNpdHk9IjAuMjUiDQogICAgIGlua3NjYXBlOnNob3dwYWdlc2hhZG93PSIyIg0KICAgICBpbmtzY2FwZTpwYWdlb3BhY2l0eT0iMC4wIg0KICAgICBpbmtzY2FwZTpwYWdlY2hlY2tlcmJvYXJkPSIwIg0KICAgICBpbmtzY2FwZTpkZXNrY29sb3I9IiNkMWQxZDEiDQogICAgIHNob3dncmlkPSJmYWxzZSINCiAgICAgaW5rc2NhcGU6em9vbT0iNDIuNzkxNjY3Ig0KICAgICBpbmtzY2FwZTpjeD0iOC4yNjA5NTQyIg0KICAgICBpbmtzY2FwZTpjeT0iMTEuOTg4MzE1Ig0KICAgICBpbmtzY2FwZTp3aW5kb3ctd2lkdGg9IjI1NjAiDQogICAgIGlua3NjYXBlOndpbmRvdy1oZWlnaHQ9IjEzNjkiDQogICAgIGlua3NjYXBlOndpbmRvdy14PSItOCINCiAgICAgaW5rc2NhcGU6d2luZG93LXk9Ii04Ig0KICAgICBpbmtzY2FwZTp3aW5kb3ctbWF4aW1pemVkPSIxIg0KICAgICBpbmtzY2FwZTpjdXJyZW50LWxheWVyPSJzdmc0IiAvPg0KICA8cGF0aA0KICAgICBkPSJtMjEgNy43MDItOC41IDQuNjJ2OS42NzhjMS41NjctLjg2NSA2LjM3OS0zLjUxNyA3Ljk3Ny00LjM5OS4zMjMtLjE3Ny41MjMtLjUxOS41MjMtLjg5MXptLTkuNSA0LjYxOS04LjUtNC43MjJ2OS4wMDZjMCAuMzcuMTk3LjcwOC41MTQuODg3IDEuNTkuODk4IDYuNDE2IDMuNjIzIDcuOTg2IDQuNTA4em0tOC4wNzktNS42MjkgOC41NzkgNC43NjMgOC42NzItNC43MTNzLTYuNjMxLTMuNzM4LTguMTg2LTQuNjE0Yy0uMTUxLS4wODUtLjMxOS0uMTI4LS40ODYtLjEyOC0uMTY4IDAtLjMzNS4wNDMtLjQ4Ni4xMjgtMS41NTUuODc2LTguMDkzIDQuNTY0LTguMDkzIDQuNTY0eiINCiAgICAgZmlsbC1ydWxlPSJub256ZXJvIg0KICAgICBpZD0icGF0aDIiDQogICAgIHN0eWxlPSJmaWxsOiNmZmZmZmY7ZmlsbC1vcGFjaXR5OjEiIC8+DQogIDxjaXJjbGUNCiAgICAgc3R5bGU9ImZpbGw6IzAwMDAwMDtmaWxsLW9wYWNpdHk6MTtzdHJva2Utd2lkdGg6MC42NjI2MDciDQogICAgIGlkPSJwYXRoMjM1OCINCiAgICAgY3g9IjE1LjI4NTUzOCINCiAgICAgY3k9IjEzLjYwMjk3Ig0KICAgICByPSIwLjc1IiAvPg0KICA8Y2lyY2xlDQogICAgIHN0eWxlPSJmaWxsOiMwMDAwMDA7ZmlsbC1vcGFjaXR5OjE7c3Ryb2tlLXdpZHRoOjAuNjYyNjA3Ig0KICAgICBpZD0icGF0aDIzNTgtMyINCiAgICAgY3g9IjE4Ljk3NTY1OCINCiAgICAgY3k9IjExLjkxODIwOCINCiAgICAgcj0iMC43NSIgLz4NCiAgPGNpcmNsZQ0KICAgICBzdHlsZT0iZmlsbDojMDAwMDAwO2ZpbGwtb3BhY2l0eToxO3N0cm9rZS13aWR0aDowLjY2MjYwNyINCiAgICAgaWQ9InBhdGgyMzU4LTQiDQogICAgIGN4PSIxOC45NTIyODgiDQogICAgIGN5PSIxNi4zMzQ5NTciDQogICAgIHI9IjAuNzUiIC8+DQogIDxjaXJjbGUNCiAgICAgc3R5bGU9ImZpbGw6IzAwMDAwMDtmaWxsLW9wYWNpdHk6MTtzdHJva2Utd2lkdGg6MC42NjI2MDciDQogICAgIGlkPSJwYXRoMjM1OC05Ig0KICAgICBjeD0iMTUuMzMwMDg4Ig0KICAgICBjeT0iMTguMDY0MjY0Ig0KICAgICByPSIwLjc1IiAvPg0KICA8Y2lyY2xlDQogICAgIHN0eWxlPSJmaWxsOiMwMDAwMDA7ZmlsbC1vcGFjaXR5OjE7c3Ryb2tlLXdpZHRoOjAuNjYyNjA3Ig0KICAgICBpZD0icGF0aDIzNTgtOCINCiAgICAgY3g9Ii04Ljk3MjYxNjIiDQogICAgIGN5PSIxMy40MDQzMzQiDQogICAgIHI9IjAuNzUiDQogICAgIHRyYW5zZm9ybT0ic2NhbGUoLTEsMSkiIC8+DQogIDxjaXJjbGUNCiAgICAgc3R5bGU9ImZpbGw6IzAwMDAwMDtmaWxsLW9wYWNpdHk6MTtzdHJva2Utd2lkdGg6MC42NjI2MDciDQogICAgIGlkPSJwYXRoMjM1OC04LTMiDQogICAgIGN4PSItMTIuMDM1MDUzIg0KICAgICBjeT0iOS4wNDM4MTc1Ig0KICAgICByPSIwLjc1Ig0KICAgICB0cmFuc2Zvcm09InNjYWxlKC0xLDEpIiAvPg0KICA8Y2lyY2xlDQogICAgIHN0eWxlPSJmaWxsOiMwMDAwMDA7ZmlsbC1vcGFjaXR5OjE7c3Ryb2tlLXdpZHRoOjAuNjYyNjA3Ig0KICAgICBpZD0icGF0aDIzNTgtOC0wIg0KICAgICBjeD0iLTEyLjA1ODQyMyINCiAgICAgY3k9IjYuNDAzMTE1NyINCiAgICAgcj0iMC43NSINCiAgICAgdHJhbnNmb3JtPSJzY2FsZSgtMSwxKSIgLz4NCiAgPGNpcmNsZQ0KICAgICBzdHlsZT0iZmlsbDojMDAwMDAwO2ZpbGwtb3BhY2l0eToxO3N0cm9rZS13aWR0aDowLjY2MjYwNyINCiAgICAgaWQ9InBhdGgyMzU4LTgtMDkiDQogICAgIGN4PSItMTIuMDgxNzkxIg0KICAgICBjeT0iNC4wODk1ODE1Ig0KICAgICByPSIwLjc1Ig0KICAgICB0cmFuc2Zvcm09InNjYWxlKC0xLDEpIiAvPg0KICA8Y2lyY2xlDQogICAgIHN0eWxlPSJmaWxsOiMwMDAwMDA7ZmlsbC1vcGFjaXR5OjE7c3Ryb2tlLXdpZHRoOjAuNjYyNjA3Ig0KICAgICBpZD0icGF0aDIzNTgtOC00Ig0KICAgICBjeD0iLTYuOTYzOTcyNiINCiAgICAgY3k9IjE0Ljc2OTIzMSINCiAgICAgcj0iMC43NSINCiAgICAgdHJhbnNmb3JtPSJzY2FsZSgtMSwxKSIgLz4NCiAgPGNpcmNsZQ0KICAgICBzdHlsZT0iZmlsbDojMDAwMDAwO2ZpbGwtb3BhY2l0eToxO3N0cm9rZS13aWR0aDowLjY2MjYwNyINCiAgICAgaWQ9InBhdGgyMzU4LTMtNSINCiAgICAgY3g9Ii01LjI4MjQ5NSINCiAgICAgY3k9IjExLjcxOTU3MiINCiAgICAgcj0iMC43NSINCiAgICAgdHJhbnNmb3JtPSJzY2FsZSgtMSwxKSIgLz4NCiAgPGNpcmNsZQ0KICAgICBzdHlsZT0iZmlsbDojMDAwMDAwO2ZpbGwtb3BhY2l0eToxO3N0cm9rZS13aWR0aDowLjY2MjYwNyINCiAgICAgaWQ9InBhdGgyMzU4LTQtNiINCiAgICAgY3g9Ii01LjMwNTg2NTgiDQogICAgIGN5PSIxNi4xMzYzMjIiDQogICAgIHI9IjAuNzUiDQogICAgIHRyYW5zZm9ybT0ic2NhbGUoLTEsMSkiIC8+DQogIDxjaXJjbGUNCiAgICAgc3R5bGU9ImZpbGw6IzAwMDAwMDtmaWxsLW9wYWNpdHk6MTtzdHJva2Utd2lkdGg6MC42NjI2MDciDQogICAgIGlkPSJwYXRoMjM1OC05LTgiDQogICAgIGN4PSItOC45MjgwNjYzIg0KICAgICBjeT0iMTcuODY1NjI5Ig0KICAgICByPSIwLjc1Ig0KICAgICB0cmFuc2Zvcm09InNjYWxlKC0xLDEpIiAvPg0KPC9zdmc+DQo="> Random</button></div><div class="colors"><div class="color"><h2>Base</h2><div class="IroColorPicker" id="" style="display: block;"><div class="IroBox" style="width: 160px; height: 160px; position: relative; overflow: visible; display: block;"><div class="IroBox" style="width: 100%; height: 100%; border-radius: 14px; box-sizing: border-box; border: 0px solid rgb(255, 255, 255); background: linear-gradient(rgba(0, 0, 0, 0) 0%, rgb(0, 0, 0) 100%), linear-gradient(to right, rgb(255, 255, 255) 0%, rgb(0, 87, 255) 100%);"></div><svg class="IroHandle IroHandle--0 IroHandle--isActive" style="transform: translate(89.4372px, 105.763px); will-change: transform; top: -8px; left: -8px; width: 16px; height: 16px; position: absolute; overflow: visible;"><circle cx="8" cy="8" r="8" fill="none" stroke-width="2" stroke="#000"></circle><circle cx="8" cy="8" r="6" fill="hsl(220, 40%, 22%)" stroke-width="2" stroke="#fff"></circle></svg></div><div class="IroSlider" style="position: relative; width: 160px; height: 28px; border-radius: 14px; background: conic-gradient(rgb(204, 204, 204) 25%, rgb(255, 255, 255) 0deg, rgb(255, 255, 255) 50%, rgb(204, 204, 204) 0deg, rgb(204, 204, 204) 75%, rgb(255, 255, 255) 0deg) 0% 0% / 8px 8px; overflow: visible; display: block; margin-top: 12px;"><div class="IroSliderGradient" style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; border-radius: 14px; background: linear-gradient(to right, rgb(255, 0, 0) 0%, rgb(255, 255, 0) 16.666%, rgb(0, 255, 0) 33.333%, rgb(0, 255, 255) 50%, rgb(0, 0, 255) 66.666%, rgb(255, 0, 255) 83.333%, rgb(255, 0, 0) 100%); box-sizing: border-box; border: 0px solid rgb(255, 255, 255);"></div><svg class="IroHandle IroHandle--0 IroHandle--isActive" style="transform: translate(94.4986px, 14px); top: -8px; left: -8px; width: 16px; height: 16px; position: absolute; overflow: visible;"><circle cx="8" cy="8" r="8" fill="none" stroke-width="2" stroke="#000"></circle><circle cx="8" cy="8" r="6" fill="none" stroke="#fff" stroke-width="2"></circle></svg></div></div></div><div class="color"><h2>Stripe</h2><div class="IroColorPicker" id="" style="display: block;"><div class="IroBox" style="width: 160px; height: 160px; position: relative; overflow: visible; display: block;"><div class="IroBox" style="width: 100%; height: 100%; border-radius: 14px; box-sizing: border-box; border: 0px solid rgb(255, 255, 255); background: linear-gradient(to right, rgb(255, 255, 255) 0%, rgb(255, 0, 0) 100%);"></div><svg class="IroHandle IroHandle--0 IroHandle--isActive" style="transform: translate(14px, 14px); top: -8px; left: -8px; width: 16px; height: 16px; position: absolute; overflow: visible;"><circle cx="8" cy="8" r="8" fill="none" stroke-width="2" stroke="#000"></circle><circle cx="8" cy="8" r="6" fill="hsl(0, 0%, 100%)" stroke-width="2" stroke="#fff"></circle></svg></div><div class="IroSlider" style="position: relative; width: 160px; height: 28px; border-radius: 14px; background: conic-gradient(rgb(204, 204, 204) 25%, rgb(255, 255, 255) 0deg, rgb(255, 255, 255) 50%, rgb(204, 204, 204) 0deg, rgb(204, 204, 204) 75%, rgb(255, 255, 255) 0deg) 0% 0% / 8px 8px; overflow: visible; display: block; margin-top: 12px;"><div class="IroSliderGradient" style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; border-radius: 14px; background: linear-gradient(to right, rgb(255, 0, 0) 0%, rgb(255, 255, 0) 16.666%, rgb(0, 255, 0) 33.333%, rgb(0, 255, 255) 50%, rgb(0, 0, 255) 66.666%, rgb(255, 0, 255) 83.333%, rgb(255, 0, 0) 100%); box-sizing: border-box; border: 0px solid rgb(255, 255, 255);"></div><svg class="IroHandle IroHandle--0 IroHandle--IsActive" style="transform: translate(14px, 14px); top: -8px; left: -8px; width: 16px; height: 16px; position: absolute; overflow: visible;"><circle cx="8" cy="8" r="8" fill="none" stroke-width="2" stroke="#000"></circle><circle cx="8" cy="8" r="6" fill="none" stroke="#fff" stroke-width="2"></circle></svg></div></div></div><div class="color"><h2>Frame</h2><div class="IroColorPicker" id="" style="display: block;"><div class="IroBox" style="width: 160px; height: 160px; position: relative; overflow: visible; display: block;"><div class="IroBox" style="width: 100%; height: 100%; border-radius: 14px; box-sizing: border-box; border: 0px solid rgb(255, 255, 255); background: linear-gradient(rgba(0, 0, 0, 0) 0%, rgb(0, 0, 0) 100%), linear-gradient(to right, rgb(255, 255, 255) 0%, rgb(255, 0, 0) 100%);"></div><svg class="IroHandle IroHandle--0 IroHandle--IsActive" style="transform: translate(14px, 136.165px); top: -8px; left: -8px; width: 16px; height: 16px; position: absolute; overflow: visible;"><circle cx="8" cy="8" r="8" fill="none" stroke-width="2" stroke="#000"></circle><circle cx="8" cy="8" r="6" fill="hsl(0, 0%, 7%)" stroke-width="2" stroke="#fff"></circle></svg></div><div class="IroSlider" style="position: relative; width: 160px; height: 28px; border-radius: 14px; background: conic-gradient(rgb(204, 204, 204) 25%, rgb(255, 255, 255) 0deg, rgb(255, 255, 255) 50%, rgb(204, 204, 204) 0deg, rgb(204, 204, 204) 75%, rgb(255, 255, 255) 0deg) 0% 0% / 8px 8px; overflow: visible; display: block; margin-top: 12px;"><div class="IroSliderGradient" style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; border-radius: 14px; background: linear-gradient(to right, rgb(255, 0, 0) 0%, rgb(255, 255, 0) 16.666%, rgb(0, 255, 0) 33.333%, rgb(0, 255, 255) 50%, rgb(0, 0, 255) 66.666%, rgb(255, 0, 255) 83.333%, rgb(255, 0, 0) 100%); box-sizing: border-box; border: 0px solid rgb(255, 255, 255);"></div><svg class="IroHandle IroHandle--0 IroHandle--IsActive" style="transform: translate(14px, 14px); top: -8px; left: -8px; width: 16px; height: 16px; position: absolute; overflow: visible;"><circle cx="8" cy="8" r="8" fill="none" stroke-width="2" stroke="#000"></circle><circle cx="8" cy="8" r="6" fill="none" stroke="#fff" stroke-width="2"></circle></svg></div></div></div><div class="color"><h2>Rims</h2><div class="IroColorPicker" id="" style="display: block;"><div class="IroBox" style="width: 160px; height: 160px; position: relative; overflow: visible; display: block;"><div class="IroBox" style="width: 100%; height: 100%; border-radius: 14px; box-sizing: border-box; border: 0px solid rgb(255, 255, 255); background: linear-gradient(rgba(0, 0, 0, 0) 0%, rgb(0, 0, 0) 100%), linear-gradient(to right, rgb(255, 255, 255) 0%, rgb(255, 0, 0) 100%);"></div><svg class="IroHandle IroHandle--0 IroHandle--IsActive" style="transform: translate(14px, 93.2px); top: -8px; left: -8px; width: 16px; height: 16px; position: absolute; overflow: visible;"><circle cx="8" cy="8" r="8" fill="none" stroke-width="2" stroke="#000"></circle><circle cx="8" cy="8" r="6" fill="hsl(0, 0%, 40%)" stroke-width="2" stroke="#fff"></circle></svg></div><div class="IroSlider" style="position: relative; width: 160px; height: 28px; border-radius: 14px; background: conic-gradient(rgb(204, 204, 204) 25%, rgb(255, 255, 255) 0deg, rgb(255, 255, 255) 50%, rgb(204, 204, 204) 0deg, rgb(204, 204, 204) 75%, rgb(255, 255, 255) 0deg) 0% 0% / 8px 8px; overflow: visible; display: block; margin-top: 12px;"><div class="IroSliderGradient" style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; border-radius: 14px; background: linear-gradient(to right, rgb(255, 0, 0) 0%, rgb(255, 255, 0) 16.666%, rgb(0, 255, 0) 33.333%, rgb(0, 255, 255) 50%, rgb(0, 0, 255) 66.666%, rgb(255, 0, 255) 83.333%, rgb(255, 0, 0) 100%); box-sizing: border-box; border: 0px solid rgb(255, 255, 255);"></div><svg class="IroHandle IroHandle--0 IroHandle--IsActive" style="transform: translate(14px, 14px); top: -8px; left: -8px; width: 16px; height: 16px; position: absolute; overflow: visible;"><circle cx="8" cy="8" r="8" fill="none" stroke-width="2" stroke="#000"></circle><circle cx="8" cy="8" r="6" fill="none" stroke="#fff" stroke-width="2"></circle></svg></div></div></div></div></div><div class="hidden"><div class="top"><div class="button-bar"><button class="button"><img class="button-icon" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGZpbGw9IiNmZmZmZmYiIGQ9Ik0yMCAyM2gydjFoLTIwdi0xaDJ2LTIzaDE2djIzem0tMS0yMmgtMTR2MjJoMTRsLTEwLTEuOTU0di0xOC4wMTVsMTAtMi4wMzF6bS03IDExaC0ydjFoMnYtMXoiLz48L3N2Zz4="> Exit</button><button class="button"><img class="button-icon" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBmaWxsPSIjZmZmZmZmIiBkPSJNMjEuNzM5IDEwLjkyMWMtMS4zNDctLjM5LTEuODg1LS41MzgtMy41NTItLjkyMSAwIDAtMi4zNzktMi4zNTktMi44MzItMi44MTYtLjU2OC0uNTcyLTEuMDQzLTEuMTg0LTIuOTQ5LTEuMTg0aC03Ljg5NGMtLjUxMSAwLS43MzYuNTQ3LS4wNyAxLS43NDIuNjAyLTEuNjE5IDEuMzgtMi4yNTggMi4wMjctMS40MzUgMS40NTUtMi4xODQgMi4zODUtMi4xODQgNC4yNTUgMCAxLjc2IDEuMDQyIDMuNzE4IDMuMTc0IDMuNzE4aC4wMWMuNDEzIDEuMTYyIDEuNTEyIDIgMi44MTYgMiAxLjMwNCAwIDIuNDAzLS44MzggMi44MTYtMmg2LjM2N2MuNDEzIDEuMTYyIDEuNTEyIDIgMi44MTYgMnMyLjQwMy0uODM4IDIuODE2LTJoLjY4NWMxLjk5NCAwIDIuNS0xLjc3NiAyLjUtMy4xNjUgMC0yLjA0MS0xLjEyMy0yLjU4NC0yLjI2MS0yLjkxNHptLTE1LjczOSA2LjI3OWMtLjY2MiAwLTEuMi0uNTM4LTEuMi0xLjJzLjUzOC0xLjIgMS4yLTEuMiAxLjIuNTM4IDEuMiAxLjItLjUzOCAxLjItMS4yIDEuMnptMy41NzYtNi4yYy0xLjA3MSAwLTMuNS0uMTA2LTUuMjE5LS43NS41NzgtLjc1Ljk5OC0xLjIyMiAxLjI3LTEuNTM2LjMxOC0uMzY4Ljg3My0uNzE0IDEuNTYxLS43MTRoMi4zODh2M3ptMS0zaDEuODM1Yy44ODIgMCAxLjQyOC40OTMgMi4wMjIgMS4xMDUuNDUyLjQ2NiAxLjczMiAxLjg5NSAxLjczMiAxLjg5NWgtNS41ODh2LTN6bTcuNDI0IDkuMmMtLjY2MiAwLTEuMi0uNTM4LTEuMi0xLjJzLjUzOC0xLjIgMS4yLTEuMiAxLjIuNTM4IDEuMiAxLjItLjUzOCAxLjItMS4yIDEuMnoiLz48L3N2Zz4="> Test</button><button class="button"><img class="button-icon" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+DQo8c3ZnDQogICBjbGlwLXJ1bGU9ImV2ZW5vZGQiDQogICBmaWxsLXJ1bGU9ImV2ZW5vZGQiDQogICBzdHJva2UtbGluZWpvaW49InJvdW5kIg0KICAgc3Ryb2tlLW1pdGVybGltaXQ9IjIiDQogICB2aWV3Qm94PSIwIDAgMjQgMjQiDQogICB2ZXJzaW9uPSIxLjEiDQogICBpZD0ic3ZnNCINCiAgIHNvZGlwb2RpOmRvY25hbWU9InJhbmRvbS5zdmciDQogICBpbmtzY2FwZTp2ZXJzaW9uPSIxLjIuMSAoOWM2ZDQxZTQxMCwgMjAyMi0wNy0xNCkiDQogICB4bWxuczppbmtzY2FwZT0iaHR0cDovL3d3dy5pbmtzY2FwZS5vcmcvbmFtZXNwYWNlcy9pbmtzY2FwZSINCiAgIHhtbG5zOnNvZGlwb2RpPSJodHRwOi8vc29kaXBvZGkuc291cmNlZm9yZ2UubmV0L0RURC9zb2RpcG9kaS0wLmR0ZCINCiAgIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyINCiAgIHhtbG5zOnN2Zz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPg0KICA8ZGVmcw0KICAgICBpZD0iZGVmczgiIC8+DQogIDxzb2RpcG9kaTpuYW1lZHZpZXcNCiAgICAgaWQ9Im5hbWVkdmlldzYiDQogICAgIHBhZ2Vjb2xvcj0iI2ZmZmZmZiINCiAgICAgYm9yZGVyY29sb3I9IiMwMDAwMDAiDQogICAgIGJvcmRlcm9wYWNpdHk9IjAuMjUiDQogICAgIGlua3NjYXBlOnNob3dwYWdlc2hhZG93PSIyIg0KICAgICBpbmtzY2FwZTpwYWdlb3BhY2l0eT0iMC4wIg0KICAgICBpbmtzY2FwZTpwYWdlY2hlY2tlcmJvYXJkPSIwIg0KICAgICBpbmtzY2FwZTpkZXNrY29sb3I9IiNkMWQxZDEiDQogICAgIHNob3dncmlkPSJmYWxzZSINCiAgICAgaW5rc2NhcGU6em9vbT0iNDIuNzkxNjY3Ig0KICAgICBpbmtzY2FwZTpjeD0iOC4yNjA5NTQyIg0KICAgICBpbmtzY2FwZTpjeT0iMTEuOTg4MzE1Ig0KICAgICBpbmtzY2FwZTp3aW5kb3ctd2lkdGg9IjI1NjAiDQogICAgIGlua3NjYXBlOndpbmRvdy1oZWlnaHQ9IjEzNjkiDQogICAgIGlua3NjYXBlOndpbmRvdy14PSItOCINCiAgICAgaW5rc2NhcGU6d2luZG93LXk9Ii04Ig0KICAgICBpbmtzY2FwZTp3aW5kb3ctbWF4aW1pemVkPSIxIg0KICAgICBpbmtzY2FwZTpjdXJyZW50LWxheWVyPSJzdmc0IiAvPg0KICA8cGF0aA0KICAgICBkPSJtMjEgNy43MDItOC41IDQuNjJ2OS42NzhjMS41NjctLjg2NSA2LjM3OS0zLjUxNyA3Ljk3Ny00LjM5OS4zMjMtLjE3Ny41MjMtLjUxOS41MjMtLjg5MXptLTkuNSA0LjYxOS04LjUtNC43MjJ2OS4wMDZjMCAuMzcuMTk3LjcwOC41MTQuODg3IDEuNTkuODk4IDYuNDE2IDMuNjIzIDcuOTg2IDQuNTA4em0tOC4wNzktNS42MjkgOC41NzkgNC43NjMgOC42NzItNC43MTNzLTYuNjMxLTMuNzM4LTguMTg2LTQuNjE0Yy0uMTUxLS4wODUtLjMxOS0uMTI4LS40ODYtLjEyOC0uMTY4IDAtLjMzNS4wNDMtLjQ4Ni4xMjgtMS41NTUuODc2LTguMDkzIDQuNTY0LTguMDkzIDQuNTY0eiINCiAgICAgZmlsbC1ydWxlPSJub256ZXJvIg0KICAgICBpZD0icGF0aDIiDQogICAgIHN0eWxlPSJmaWxsOiNmZmZmZmY7ZmlsbC1vcGFjaXR5OjEiIC8+DQogIDxjaXJjbGUNCiAgICAgc3R5bGU9ImZpbGw6IzAwMDAwMDtmaWxsLW9wYWNpdHk6MTtzdHJva2Utd2lkdGg6MC42NjI2MDciDQogICAgIGlkPSJwYXRoMjM1OCINCiAgICAgY3g9IjE1LjI4NTUzOCINCiAgICAgY3k9IjEzLjYwMjk3Ig0KICAgICByPSIwLjc1IiAvPg0KICA8Y2lyY2xlDQogICAgIHN0eWxlPSJmaWxsOiMwMDAwMDA7ZmlsbC1vcGFjaXR5OjE7c3Ryb2tlLXdpZHRoOjAuNjYyNjA3Ig0KICAgICBpZD0icGF0aDIzNTgtMyINCiAgICAgY3g9IjE4Ljk3NTY1OCINCiAgICAgY3k9IjExLjkxODIwOCINCiAgICAgcj0iMC43NSIgLz4NCiAgPGNpcmNsZQ0KICAgICBzdHlsZT0iZmlsbDojMDAwMDAwO2ZpbGwtb3BhY2l0eToxO3N0cm9rZS13aWR0aDowLjY2MjYwNyINCiAgICAgaWQ9InBhdGgyMzU4LTQiDQogICAgIGN4PSIxOC45NTIyODgiDQogICAgIGN5PSIxNi4zMzQ5NTciDQogICAgIHI9IjAuNzUiIC8+DQogIDxjaXJjbGUNCiAgICAgc3R5bGU9ImZpbGw6IzAwMDAwMDtmaWxsLW9wYWNpdHk6MTtzdHJva2Utd2lkdGg6MC42NjI2MDciDQogICAgIGlkPSJwYXRoMjM1OC05Ig0KICAgICBjeD0iMTUuMzMwMDg4Ig0KICAgICBjeT0iMTguMDY0MjY0Ig0KICAgICByPSIwLjc1IiAvPg0KICA8Y2lyY2xlDQogICAgIHN0eWxlPSJmaWxsOiMwMDAwMDA7ZmlsbC1vcGFjaXR5OjE7c3Ryb2tlLXdpZHRoOjAuNjYyNjA3Ig0KICAgICBpZD0icGF0aDIzNTgtOCINCiAgICAgY3g9Ii04Ljk3MjYxNjIiDQogICAgIGN5PSIxMy40MDQzMzQiDQogICAgIHI9IjAuNzUiDQogICAgIHRyYW5zZm9ybT0ic2NhbGUoLTEsMSkiIC8+DQogIDxjaXJjbGUNCiAgICAgc3R5bGU9ImZpbGw6IzAwMDAwMDtmaWxsLW9wYWNpdHk6MTtzdHJva2Utd2lkdGg6MC42NjI2MDciDQogICAgIGlkPSJwYXRoMjM1OC04LTMiDQogICAgIGN4PSItMTIuMDM1MDUzIg0KICAgICBjeT0iOS4wNDM4MTc1Ig0KICAgICByPSIwLjc1Ig0KICAgICB0cmFuc2Zvcm09InNjYWxlKC0xLDEpIiAvPg0KICA8Y2lyY2xlDQogICAgIHN0eWxlPSJmaWxsOiMwMDAwMDA7ZmlsbC1vcGFjaXR5OjE7c3Ryb2tlLXdpZHRoOjAuNjYyNjA3Ig0KICAgICBpZD0icGF0aDIzNTgtOC0wIg0KICAgICBjeD0iLTEyLjA1ODQyMyINCiAgICAgY3k9IjYuNDAzMTE1NyINCiAgICAgcj0iMC43NSINCiAgICAgdHJhbnNmb3JtPSJzY2FsZSgtMSwxKSIgLz4NCiAgPGNpcmNsZQ0KICAgICBzdHlsZT0iZmlsbDojMDAwMDAwO2ZpbGwtb3BhY2l0eToxO3N0cm9rZS13aWR0aDowLjY2MjYwNyINCiAgICAgaWQ9InBhdGgyMzU4LTgtMDkiDQogICAgIGN4PSItMTIuMDgxNzkxIg0KICAgICBjeT0iNC4wODk1ODE1Ig0KICAgICByPSIwLjc1Ig0KICAgICB0cmFuc2Zvcm09InNjYWxlKC0xLDEpIiAvPg0KICA8Y2lyY2xlDQogICAgIHN0eWxlPSJmaWxsOiMwMDAwMDA7ZmlsbC1vcGFjaXR5OjE7c3Ryb2tlLXdpZHRoOjAuNjYyNjA3Ig0KICAgICBpZD0icGF0aDIzNTgtOC00Ig0KICAgICBjeD0iLTYuOTYzOTcyNiINCiAgICAgY3k9IjE0Ljc2OTIzMSINCiAgICAgcj0iMC43NSINCiAgICAgdHJhbnNmb3JtPSJzY2FsZSgtMSwxKSIgLz4NCiAgPGNpcmNsZQ0KICAgICBzdHlsZT0iZmlsbDojMDAwMDAwO2ZpbGwtb3BhY2l0eToxO3N0cm9rZS13aWR0aDowLjY2MjYwNyINCiAgICAgaWQ9InBhdGgyMzU4LTMtNSINCiAgICAgY3g9Ii01LjI4MjQ5NSINCiAgICAgY3k9IjExLjcxOTU3MiINCiAgICAgcj0iMC43NSINCiAgICAgdHJhbnNmb3JtPSJzY2FsZSgtMSwxKSIgLz4NCiAgPGNpcmNsZQ0KICAgICBzdHlsZT0iZmlsbDojMDAwMDAwO2ZpbGwtb3BhY2l0eToxO3N0cm9rZS13aWR0aDowLjY2MjYwNyINCiAgICAgaWQ9InBhdGgyMzU4LTQtNiINCiAgICAgY3g9Ii01LjMwNTg2NTgiDQogICAgIGN5PSIxNi4xMzYzMjIiDQogICAgIHI9IjAuNzUiDQogICAgIHRyYW5zZm9ybT0ic2NhbGUoLTEsMSkiIC8+DQogIDxjaXJjbGUNCiAgICAgc3R5bGU9ImZpbGw6IzAwMDAwMDtmaWxsLW9wYWNpdHk6MTtzdHJva2Utd2lkdGg6MC42NjI2MDciDQogICAgIGlkPSJwYXRoMjM1OC05LTgiDQogICAgIGN4PSItOC45MjgwNjYzIg0KICAgICBjeT0iMTcuODY1NjI5Ig0KICAgICByPSIwLjc1Ig0KICAgICB0cmFuc2Zvcm09InNjYWxlKC0xLDEpIiAvPg0KPC9zdmc+DQo="> Generate</button><button class="button"><img class="button-icon" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+DQo8c3ZnDQogICB3aWR0aD0iMjQiDQogICBoZWlnaHQ9IjI0Ig0KICAgdmlld0JveD0iMCAwIDI0IDI0Ig0KICAgdmVyc2lvbj0iMS4xIg0KICAgaWQ9InN2ZzQiDQogICBzb2RpcG9kaTpkb2NuYW1lPSJsb2FkLnN2ZyINCiAgIGlua3NjYXBlOnZlcnNpb249IjEuMi4xICg5YzZkNDFlNDEwLCAyMDIyLTA3LTE0KSINCiAgIHhtbG5zOmlua3NjYXBlPSJodHRwOi8vd3d3Lmlua3NjYXBlLm9yZy9uYW1lc3BhY2VzL2lua3NjYXBlIg0KICAgeG1sbnM6c29kaXBvZGk9Imh0dHA6Ly9zb2RpcG9kaS5zb3VyY2Vmb3JnZS5uZXQvRFREL3NvZGlwb2RpLTAuZHRkIg0KICAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIg0KICAgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+DQogIDxkZWZzDQogICAgIGlkPSJkZWZzOCIgLz4NCiAgPHNvZGlwb2RpOm5hbWVkdmlldw0KICAgICBpZD0ibmFtZWR2aWV3NiINCiAgICAgcGFnZWNvbG9yPSIjZmZmZmZmIg0KICAgICBib3JkZXJjb2xvcj0iIzAwMDAwMCINCiAgICAgYm9yZGVyb3BhY2l0eT0iMC4yNSINCiAgICAgaW5rc2NhcGU6c2hvd3BhZ2VzaGFkb3c9IjIiDQogICAgIGlua3NjYXBlOnBhZ2VvcGFjaXR5PSIwLjAiDQogICAgIGlua3NjYXBlOnBhZ2VjaGVja2VyYm9hcmQ9IjAiDQogICAgIGlua3NjYXBlOmRlc2tjb2xvcj0iI2QxZDFkMSINCiAgICAgc2hvd2dyaWQ9ImZhbHNlIg0KICAgICBpbmtzY2FwZTp6b29tPSI0Mi43OTE2NjciDQogICAgIGlua3NjYXBlOmN4PSIxMS40MzkxNDMiDQogICAgIGlua3NjYXBlOmN5PSIxMS45ODgzMTUiDQogICAgIGlua3NjYXBlOndpbmRvdy13aWR0aD0iMjU2MCINCiAgICAgaW5rc2NhcGU6d2luZG93LWhlaWdodD0iMTM2OSINCiAgICAgaW5rc2NhcGU6d2luZG93LXg9Ii04Ig0KICAgICBpbmtzY2FwZTp3aW5kb3cteT0iLTgiDQogICAgIGlua3NjYXBlOndpbmRvdy1tYXhpbWl6ZWQ9IjEiDQogICAgIGlua3NjYXBlOmN1cnJlbnQtbGF5ZXI9InN2ZzQiIC8+DQogIDxwYXRoDQogICAgIHN0eWxlPSJmaWxsOiNmZmZmZmY7c3Ryb2tlLXdpZHRoOjAuNzg3MzQyIg0KICAgICBkPSJNIDIuNTUxODk4Nyw5LjYzNzk3NDcgViA0LjEyNjU4MjMgSCA4LjA2MzI5MTEgQyA5LjM5NzgzNTQsNS42NTU2IDkuOTMwMDc4NSw2LjQ4ODYwNzYgMTEuMjEyNjU4LDYuNDg4NjA3NiBoIDEwLjIzNTQ0MyB2IDMuMTQ5MzY3MSB6IG0gMCwxLjU3NDY4MzMgdiA4LjY2MDc2IEggMjEuNDQ4MTAxIHYgLTguNjYwNzYgeiINCiAgICAgaWQ9InBhdGgyIiAvPg0KPC9zdmc+DQo="> Load</button><button class="button"><img class="button-icon" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iLTQgLTQgMzIgMzIiPjxwYXRoIGZpbGw9IiNmZmZmZmYiIGQ9Ik0xNCAzaDIuOTk3djVoLTIuOTk3di01em05IDF2MjBoLTIydi0yNGgxNy45OTdsNC4wMDMgNHptLTE3IDVoMTJ2LTdoLTEydjd6bTE0IDRoLTE2djloMTZ2LTl6Ii8+PC9zdmc+"> Save</button><button class="button"><img class="button-icon" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+DQo8c3ZnDQogICB3aWR0aD0iMjQiDQogICBoZWlnaHQ9IjI0Ig0KICAgZmlsbC1ydWxlPSJldmVub2RkIg0KICAgY2xpcC1ydWxlPSJldmVub2RkIg0KICAgdmVyc2lvbj0iMS4xIg0KICAgaWQ9InN2ZzQiDQogICBzb2RpcG9kaTpkb2NuYW1lPSJleHBvcnQuc3ZnIg0KICAgaW5rc2NhcGU6dmVyc2lvbj0iMS4yLjEgKDljNmQ0MWU0MTAsIDIwMjItMDctMTQpIg0KICAgeG1sbnM6aW5rc2NhcGU9Imh0dHA6Ly93d3cuaW5rc2NhcGUub3JnL25hbWVzcGFjZXMvaW5rc2NhcGUiDQogICB4bWxuczpzb2RpcG9kaT0iaHR0cDovL3NvZGlwb2RpLnNvdXJjZWZvcmdlLm5ldC9EVEQvc29kaXBvZGktMC5kdGQiDQogICB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciDQogICB4bWxuczpzdmc9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4NCiAgPGRlZnMNCiAgICAgaWQ9ImRlZnM4IiAvPg0KICA8c29kaXBvZGk6bmFtZWR2aWV3DQogICAgIGlkPSJuYW1lZHZpZXc2Ig0KICAgICBwYWdlY29sb3I9IiNmZmZmZmYiDQogICAgIGJvcmRlcmNvbG9yPSIjMDAwMDAwIg0KICAgICBib3JkZXJvcGFjaXR5PSIwLjI1Ig0KICAgICBpbmtzY2FwZTpzaG93cGFnZXNoYWRvdz0iMiINCiAgICAgaW5rc2NhcGU6cGFnZW9wYWNpdHk9IjAuMCINCiAgICAgaW5rc2NhcGU6cGFnZWNoZWNrZXJib2FyZD0iMCINCiAgICAgaW5rc2NhcGU6ZGVza2NvbG9yPSIjZDFkMWQxIg0KICAgICBzaG93Z3JpZD0iZmFsc2UiDQogICAgIGlua3NjYXBlOnpvb209IjE1LjEyOTEzOSINCiAgICAgaW5rc2NhcGU6Y3g9Ii0zLjEzOTYzNjciDQogICAgIGlua3NjYXBlOmN5PSI0LjE2NDE0OTgiDQogICAgIGlua3NjYXBlOndpbmRvdy13aWR0aD0iMjU2MCINCiAgICAgaW5rc2NhcGU6d2luZG93LWhlaWdodD0iMTM2OSINCiAgICAgaW5rc2NhcGU6d2luZG93LXg9Ii04Ig0KICAgICBpbmtzY2FwZTp3aW5kb3cteT0iLTgiDQogICAgIGlua3NjYXBlOndpbmRvdy1tYXhpbWl6ZWQ9IjEiDQogICAgIGlua3NjYXBlOmN1cnJlbnQtbGF5ZXI9InN2ZzQiIC8+DQogIDxwYXRoDQogICAgIHN0eWxlPSJmaWxsOiNmZmZmZmY7c3Ryb2tlLXdpZHRoOjAuNzc5Njc1Ig0KICAgICBkPSJNIDguODgxMzAxNSwxMS4yMjAzMjUgSCA0LjIwMzI1MzggdiA3Ljc5Njc0NyBIIDE5Ljc5Njc0NiBWIDExLjIyMDMyNSBIIDE1LjExODY5OCBWIDkuNjYwOTc2MiBoIDYuMjM3Mzk3IFYgMjAuNTc2NDIxIEggMi42NDM5MDQ2IFYgOS42NjA5NzYyIEggOC44ODEzMDE1IFogTSA4LjEwMTYyNjksOC4xMDE2MjY5IDEyLDMuNDIzNTc5MiAxNS44OTgzNzMsOC4xMDE2MjY5IGggLTMuMTE4Njk4IHYgOC41NzY0MjExIGggLTEuNTU5MzUgViA4LjEwMTYyNjkgWiINCiAgICAgaWQ9InBhdGgyIiAvPg0KPC9zdmc+DQo="> Export</button></div><div class="trackname-input">Track name: <input type="text" maxlength="64" spellcheck="false"></div></div><div class="message-box"></div><div class="side"><button><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+DQo8c3ZnDQogICB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iDQogICB4bWxuczpjYz0iaHR0cDovL2NyZWF0aXZlY29tbW9ucy5vcmcvbnMjIg0KICAgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIg0KICAgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyINCiAgIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyINCiAgIHhtbG5zOnNvZGlwb2RpPSJodHRwOi8vc29kaXBvZGkuc291cmNlZm9yZ2UubmV0L0RURC9zb2RpcG9kaS0wLmR0ZCINCiAgIHhtbG5zOmlua3NjYXBlPSJodHRwOi8vd3d3Lmlua3NjYXBlLm9yZy9uYW1lc3BhY2VzL2lua3NjYXBlIg0KICAgd2lkdGg9IjQ4Ig0KICAgaGVpZ2h0PSI0OCINCiAgIHZpZXdCb3g9IjAgMCA0OCA0OCINCiAgIHZlcnNpb249IjEuMSINCiAgIGlkPSJzdmc4MjciDQogICBzb2RpcG9kaTpkb2NuYW1lPSJlcmFzZS5zdmciDQogICBpbmtzY2FwZTp2ZXJzaW9uPSIwLjkyLjQgKDVkYTY4OWMzMTMsIDIwMTktMDEtMTQpIj4NCiAgPG1ldGFkYXRhDQogICAgIGlkPSJtZXRhZGF0YTgzMyI+DQogICAgPHJkZjpSREY+DQogICAgICA8Y2M6V29yaw0KICAgICAgICAgcmRmOmFib3V0PSIiPg0KICAgICAgICA8ZGM6Zm9ybWF0PmltYWdlL3N2Zyt4bWw8L2RjOmZvcm1hdD4NCiAgICAgICAgPGRjOnR5cGUNCiAgICAgICAgICAgcmRmOnJlc291cmNlPSJodHRwOi8vcHVybC5vcmcvZGMvZGNtaXR5cGUvU3RpbGxJbWFnZSIgLz4NCiAgICAgICAgPGRjOnRpdGxlPjwvZGM6dGl0bGU+DQogICAgICA8L2NjOldvcms+DQogICAgPC9yZGY6UkRGPg0KICA8L21ldGFkYXRhPg0KICA8ZGVmcw0KICAgICBpZD0iZGVmczgzMSIgLz4NCiAgPHNvZGlwb2RpOm5hbWVkdmlldw0KICAgICBwYWdlY29sb3I9IiNmZmZmZmYiDQogICAgIGJvcmRlcmNvbG9yPSIjNjY2NjY2Ig0KICAgICBib3JkZXJvcGFjaXR5PSIxIg0KICAgICBvYmplY3R0b2xlcmFuY2U9IjEwIg0KICAgICBncmlkdG9sZXJhbmNlPSIxMCINCiAgICAgZ3VpZGV0b2xlcmFuY2U9IjEwIg0KICAgICBpbmtzY2FwZTpwYWdlb3BhY2l0eT0iMCINCiAgICAgaW5rc2NhcGU6cGFnZXNoYWRvdz0iMiINCiAgICAgaW5rc2NhcGU6d2luZG93LXdpZHRoPSIxMjc4Ig0KICAgICBpbmtzY2FwZTp3aW5kb3ctaGVpZ2h0PSIxMzY4Ig0KICAgICBpZD0ibmFtZWR2aWV3ODI5Ig0KICAgICBzaG93Z3JpZD0idHJ1ZSINCiAgICAgc2hvd2d1aWRlcz0idHJ1ZSINCiAgICAgaW5rc2NhcGU6em9vbT0iMTEuNjM3Nzk5Ig0KICAgICBpbmtzY2FwZTpjeD0iMjMuODQ5MzExIg0KICAgICBpbmtzY2FwZTpjeT0iMjIuNjI2MjQ4Ig0KICAgICBpbmtzY2FwZTp3aW5kb3cteD0iLTciDQogICAgIGlua3NjYXBlOndpbmRvdy15PSIwIg0KICAgICBpbmtzY2FwZTp3aW5kb3ctbWF4aW1pemVkPSIwIg0KICAgICBpbmtzY2FwZTpjdXJyZW50LWxheWVyPSJzdmc4MjciPg0KICAgIDxpbmtzY2FwZTpncmlkDQogICAgICAgdHlwZT0ieHlncmlkIg0KICAgICAgIGlkPSJncmlkNDUzOCIgLz4NCiAgPC9zb2RpcG9kaTpuYW1lZHZpZXc+DQogIDxwYXRoDQogICAgIGQ9Im0gMzYsMzIuMTg4IC04LjMxNSwtOC4yMDkgOC4yLC04LjI4MiBMIDMyLjE4OCwxMiAyMy45NzYsMjAuMzE4IDE1LjY2NiwxMi4xMTUgMTIsMTUuNzgxIGwgOC4zMjEsOC4yNCAtOC4yMDYsOC4zMTMgMy42NjYsMy42NjYgOC4yMzcsLTguMzE4IDguMjg1LDguMjAzIHoiDQogICAgIGlkPSJwYXRoODI1Ig0KICAgICBpbmtzY2FwZTpjb25uZWN0b3ItY3VydmF0dXJlPSIwIg0KICAgICBzdHlsZT0iZmlsbDojZmZmZmZmIiAvPg0KPC9zdmc+DQo="></button></div><div class="editor-height-selector"><div class="buttons"><button><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHN0eWxlPSJmaWxsOiNmZmZmZmYiIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBkPSJNMTIgM2wxMiAxOGgtMjR6Ii8+PC9zdmc+"></button><button><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHN0eWxlPSJmaWxsOiNmZmZmZmYiIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBkPSJNMTIgMjFsLTEyLTE4aDI0eiIvPjwvc3ZnPg=="></button></div><p>Height: 0</p></div></div><div class="hidden"><div class="bar"><button class="button"><img class="button-icon" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+DQo8c3ZnDQogICB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iDQogICB4bWxuczpjYz0iaHR0cDovL2NyZWF0aXZlY29tbW9ucy5vcmcvbnMjIg0KICAgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIg0KICAgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyINCiAgIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyINCiAgIHhtbG5zOnNvZGlwb2RpPSJodHRwOi8vc29kaXBvZGkuc291cmNlZm9yZ2UubmV0L0RURC9zb2RpcG9kaS0wLmR0ZCINCiAgIHhtbG5zOmlua3NjYXBlPSJodHRwOi8vd3d3Lmlua3NjYXBlLm9yZy9uYW1lc3BhY2VzL2lua3NjYXBlIg0KICAgd2lkdGg9IjQ4Ig0KICAgaGVpZ2h0PSI0OCINCiAgIHZpZXdCb3g9IjAgMCA0OCA0OCINCiAgIHZlcnNpb249IjEuMSINCiAgIGlkPSJzdmc4MjciDQogICBzb2RpcG9kaTpkb2NuYW1lPSJlcmFzZS5zdmciDQogICBpbmtzY2FwZTp2ZXJzaW9uPSIwLjkyLjQgKDVkYTY4OWMzMTMsIDIwMTktMDEtMTQpIj4NCiAgPG1ldGFkYXRhDQogICAgIGlkPSJtZXRhZGF0YTgzMyI+DQogICAgPHJkZjpSREY+DQogICAgICA8Y2M6V29yaw0KICAgICAgICAgcmRmOmFib3V0PSIiPg0KICAgICAgICA8ZGM6Zm9ybWF0PmltYWdlL3N2Zyt4bWw8L2RjOmZvcm1hdD4NCiAgICAgICAgPGRjOnR5cGUNCiAgICAgICAgICAgcmRmOnJlc291cmNlPSJodHRwOi8vcHVybC5vcmcvZGMvZGNtaXR5cGUvU3RpbGxJbWFnZSIgLz4NCiAgICAgICAgPGRjOnRpdGxlPjwvZGM6dGl0bGU+DQogICAgICA8L2NjOldvcms+DQogICAgPC9yZGY6UkRGPg0KICA8L21ldGFkYXRhPg0KICA8ZGVmcw0KICAgICBpZD0iZGVmczgzMSIgLz4NCiAgPHNvZGlwb2RpOm5hbWVkdmlldw0KICAgICBwYWdlY29sb3I9IiNmZmZmZmYiDQogICAgIGJvcmRlcmNvbG9yPSIjNjY2NjY2Ig0KICAgICBib3JkZXJvcGFjaXR5PSIxIg0KICAgICBvYmplY3R0b2xlcmFuY2U9IjEwIg0KICAgICBncmlkdG9sZXJhbmNlPSIxMCINCiAgICAgZ3VpZGV0b2xlcmFuY2U9IjEwIg0KICAgICBpbmtzY2FwZTpwYWdlb3BhY2l0eT0iMCINCiAgICAgaW5rc2NhcGU6cGFnZXNoYWRvdz0iMiINCiAgICAgaW5rc2NhcGU6d2luZG93LXdpZHRoPSIxMjc4Ig0KICAgICBpbmtzY2FwZTp3aW5kb3ctaGVpZ2h0PSIxMzY4Ig0KICAgICBpZD0ibmFtZWR2aWV3ODI5Ig0KICAgICBzaG93Z3JpZD0idHJ1ZSINCiAgICAgc2hvd2d1aWRlcz0idHJ1ZSINCiAgICAgaW5rc2NhcGU6em9vbT0iMTEuNjM3Nzk5Ig0KICAgICBpbmtzY2FwZTpjeD0iMjMuODQ5MzExIg0KICAgICBpbmtzY2FwZTpjeT0iMjIuNjI2MjQ4Ig0KICAgICBpbmtzY2FwZTp3aW5kb3cteD0iLTciDQogICAgIGlua3NjYXBlOndpbmRvdy15PSIwIg0KICAgICBpbmtzY2FwZTp3aW5kb3ctbWF4aW1pemVkPSIwIg0KICAgICBpbmtzY2FwZTpjdXJyZW50LWxheWVyPSJzdmc4MjciPg0KICAgIDxpbmtzY2FwZTpncmlkDQogICAgICAgdHlwZT0ieHlncmlkIg0KICAgICAgIGlkPSJncmlkNDUzOCIgLz4NCiAgPC9zb2RpcG9kaTpuYW1lZHZpZXc+DQogIDxwYXRoDQogICAgIGQ9Im0gMzYsMzIuMTg4IC04LjMxNSwtOC4yMDkgOC4yLC04LjI4MiBMIDMyLjE4OCwxMiAyMy45NzYsMjAuMzE4IDE1LjY2NiwxMi4xMTUgMTIsMTUuNzgxIGwgOC4zMjEsOC4yNCAtOC4yMDYsOC4zMTMgMy42NjYsMy42NjYgOC4yMzcsLTguMzE4IDguMjg1LDguMjAzIHoiDQogICAgIGlkPSJwYXRoODI1Ig0KICAgICBpbmtzY2FwZTpjb25uZWN0b3ItY3VydmF0dXJlPSIwIg0KICAgICBzdHlsZT0iZmlsbDojZmZmZmZmIiAvPg0KPC9zdmc+DQo="> Cancel</button><button class="button right"><img class="button-icon" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+DQo8c3ZnDQogICB3aWR0aD0iMjQiDQogICBoZWlnaHQ9IjI0Ig0KICAgZmlsbC1ydWxlPSJldmVub2RkIg0KICAgY2xpcC1ydWxlPSJldmVub2RkIg0KICAgdmVyc2lvbj0iMS4xIg0KICAgaWQ9InN2ZzQiDQogICBzb2RpcG9kaTpkb2NuYW1lPSJpbXBvcnQuc3ZnIg0KICAgaW5rc2NhcGU6dmVyc2lvbj0iMS4yLjEgKDljNmQ0MWU0MTAsIDIwMjItMDctMTQpIg0KICAgeG1sbnM6aW5rc2NhcGU9Imh0dHA6Ly93d3cuaW5rc2NhcGUub3JnL25hbWVzcGFjZXMvaW5rc2NhcGUiDQogICB4bWxuczpzb2RpcG9kaT0iaHR0cDovL3NvZGlwb2RpLnNvdXJjZWZvcmdlLm5ldC9EVEQvc29kaXBvZGktMC5kdGQiDQogICB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciDQogICB4bWxuczpzdmc9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4NCiAgPGRlZnMNCiAgICAgaWQ9ImRlZnM4IiAvPg0KICA8c29kaXBvZGk6bmFtZWR2aWV3DQogICAgIGlkPSJuYW1lZHZpZXc2Ig0KICAgICBwYWdlY29sb3I9IiNmZmZmZmYiDQogICAgIGJvcmRlcmNvbG9yPSIjMDAwMDAwIg0KICAgICBib3JkZXJvcGFjaXR5PSIwLjI1Ig0KICAgICBpbmtzY2FwZTpzaG93cGFnZXNoYWRvdz0iMiINCiAgICAgaW5rc2NhcGU6cGFnZW9wYWNpdHk9IjAuMCINCiAgICAgaW5rc2NhcGU6cGFnZWNoZWNrZXJib2FyZD0iMCINCiAgICAgaW5rc2NhcGU6ZGVza2NvbG9yPSIjZDFkMWQxIg0KICAgICBzaG93Z3JpZD0iZmFsc2UiDQogICAgIGlua3NjYXBlOnpvb209IjQyLjc5MTY2NyINCiAgICAgaW5rc2NhcGU6Y3g9IjExLjQzOTE0MyINCiAgICAgaW5rc2NhcGU6Y3k9IjExLjk4ODMxNSINCiAgICAgaW5rc2NhcGU6d2luZG93LXdpZHRoPSIyNTYwIg0KICAgICBpbmtzY2FwZTp3aW5kb3ctaGVpZ2h0PSIxMzY5Ig0KICAgICBpbmtzY2FwZTp3aW5kb3cteD0iLTgiDQogICAgIGlua3NjYXBlOndpbmRvdy15PSItOCINCiAgICAgaW5rc2NhcGU6d2luZG93LW1heGltaXplZD0iMSINCiAgICAgaW5rc2NhcGU6Y3VycmVudC1sYXllcj0ic3ZnNCIgLz4NCiAgPHBhdGgNCiAgICAgc3R5bGU9ImZpbGw6I2ZmZmZmZjtzdHJva2Utd2lkdGg6MC43ODE4ODkiDQogICAgIGQ9Ik0gOC44NzI0NDQsMTEuMjE4MTExIEggNC4xODExMSB2IDcuODE4ODkgaCAxNS42Mzc3OCB2IC03LjgxODg5IEggMTUuMTI3NTU2IFYgOS42NTQzMzMgaCA2LjI1NTExMiBWIDIwLjYwMDc3OSBIIDIuNjE3MzMyIFYgOS42NTQzMzMgaCA2LjI1NTExMiB6IG0gMy45MDk0NDUsMS41NjM3NzggaCAzLjEyNzU1NiBMIDEyLDE3LjQ3MzIyMyA4LjA5MDU1NSwxMi43ODE4ODkgaCAzLjEyNzU1NiBWIDMuMzk5MjIxIGggMS41NjM3NzggeiINCiAgICAgaWQ9InBhdGgyIiAvPg0KPC9zdmc+DQo="> Import</button></div><div class="tracks-container"></div></div><div class="hidden"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+DQo8IS0tIENyZWF0ZWQgd2l0aCBJbmtzY2FwZSAoaHR0cDovL3d3dy5pbmtzY2FwZS5vcmcvKSAtLT4NCg0KPHN2Zw0KICAgd2lkdGg9IjEwMDAiDQogICBoZWlnaHQ9IjIwMCINCiAgIHZpZXdCb3g9IjAgMCAyNjQuNTgzMzMgNTIuOTE2NjY2Ig0KICAgdmVyc2lvbj0iMS4xIg0KICAgaWQ9InN2ZzUiDQogICBpbmtzY2FwZTp2ZXJzaW9uPSIxLjIuMSAoOWM2ZDQxZTQxMCwgMjAyMi0wNy0xNCkiDQogICBzb2RpcG9kaTpkb2NuYW1lPSJsb2dvLnN2ZyINCiAgIHhtbDpzcGFjZT0icHJlc2VydmUiDQogICB4bWxuczppbmtzY2FwZT0iaHR0cDovL3d3dy5pbmtzY2FwZS5vcmcvbmFtZXNwYWNlcy9pbmtzY2FwZSINCiAgIHhtbG5zOnNvZGlwb2RpPSJodHRwOi8vc29kaXBvZGkuc291cmNlZm9yZ2UubmV0L0RURC9zb2RpcG9kaS0wLmR0ZCINCiAgIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyINCiAgIHhtbG5zOnN2Zz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxzb2RpcG9kaTpuYW1lZHZpZXcNCiAgICAgaWQ9Im5hbWVkdmlldzciDQogICAgIHBhZ2Vjb2xvcj0iIzAwMDAwMCINCiAgICAgYm9yZGVyY29sb3I9IiMwMDAwMDAiDQogICAgIGJvcmRlcm9wYWNpdHk9IjAuMjUiDQogICAgIGlua3NjYXBlOnNob3dwYWdlc2hhZG93PSIyIg0KICAgICBpbmtzY2FwZTpwYWdlb3BhY2l0eT0iMCINCiAgICAgaW5rc2NhcGU6cGFnZWNoZWNrZXJib2FyZD0idHJ1ZSINCiAgICAgaW5rc2NhcGU6ZGVza2NvbG9yPSIjZDFkMWQxIg0KICAgICBpbmtzY2FwZTpkb2N1bWVudC11bml0cz0ibW0iDQogICAgIHNob3dncmlkPSJmYWxzZSINCiAgICAgaW5rc2NhcGU6em9vbT0iNS4xNzU0ODk5Ig0KICAgICBpbmtzY2FwZTpjeD0iNzk0LjUxNDE2Ig0KICAgICBpbmtzY2FwZTpjeT0iNDQuOTIzMjgzIg0KICAgICBpbmtzY2FwZTp3aW5kb3ctd2lkdGg9IjI1NDQiDQogICAgIGlua3NjYXBlOndpbmRvdy1oZWlnaHQ9IjEzNjAiDQogICAgIGlua3NjYXBlOndpbmRvdy14PSItNyINCiAgICAgaW5rc2NhcGU6d2luZG93LXk9IjAiDQogICAgIGlua3NjYXBlOndpbmRvdy1tYXhpbWl6ZWQ9IjAiDQogICAgIGlua3NjYXBlOmN1cnJlbnQtbGF5ZXI9Imc1MTI4IiAvPjxkZWZzDQogICAgIGlkPSJkZWZzMiIgLz48Zw0KICAgICBpbmtzY2FwZTpsYWJlbD0iTGF5ZXIgMSINCiAgICAgaW5rc2NhcGU6Z3JvdXBtb2RlPSJsYXllciINCiAgICAgaWQ9ImxheWVyMSI+PGcNCiAgICAgICBhcmlhLWxhYmVsPSJQb2x5VHJhY2siDQogICAgICAgaWQ9InRleHQzODIiDQogICAgICAgc3R5bGU9ImZvbnQtc2l6ZTo1OS4yMTMxcHg7Zm9udC1mYW1pbHk6SW1wYWN0Oy1pbmtzY2FwZS1mb250LXNwZWNpZmljYXRpb246SW1wYWN0O2ZpbGw6IzI4MzQ2YTtzdHJva2U6IzIxMmI1ODtzdHJva2Utd2lkdGg6MS4zMjI5MiI+PGcNCiAgICAgICAgIGlkPSJnNTExNyI+PGcNCiAgICAgICAgICAgaWQ9Imc1MTI4Ig0KICAgICAgICAgICB0cmFuc2Zvcm09Im1hdHJpeCgxLDAsLTAuMTkxNDY1MTcsMSw3LjgzMDMwOTksMCkiPjxyZWN0DQogICAgICAgICAgICAgc3R5bGU9ImZvbnQtc2l6ZTo1OS4yMTMxcHg7Zm9udC1mYW1pbHk6SW1wYWN0Oy1pbmtzY2FwZS1mb250LXNwZWNpZmljYXRpb246SW1wYWN0O2ZpbGw6IzExMjA1MjtmaWxsLW9wYWNpdHk6MTtzdHJva2U6bm9uZTtzdHJva2Utd2lkdGg6MC4zNzA5ODtzdHJva2UtZGFzaGFycmF5Om5vbmU7c3Ryb2tlLW9wYWNpdHk6MSINCiAgICAgICAgICAgICBpZD0icmVjdDE5OTgyLTEiDQogICAgICAgICAgICAgd2lkdGg9IjcyLjM1MTA4OSINCiAgICAgICAgICAgICBoZWlnaHQ9IjAuOTUyMzAwNDkiDQogICAgICAgICAgICAgeD0iMTQzLjI2ODc0Ig0KICAgICAgICAgICAgIHk9IjMuMjcyODUxNyINCiAgICAgICAgICAgICB0cmFuc2Zvcm09Im1hdHJpeCgxLDAsMC4xODgwNDkzNCwwLjk4MjE1OTU4LDAsMCkiIC8+PHJlY3QNCiAgICAgICAgICAgICBzdHlsZT0iZm9udC1zaXplOjU5LjIxMzFweDtmb250LWZhbWlseTpJbXBhY3Q7LWlua3NjYXBlLWZvbnQtc3BlY2lmaWNhdGlvbjpJbXBhY3Q7ZmlsbDojMTEyMDUyO2ZpbGwtb3BhY2l0eToxO3N0cm9rZTpub25lO3N0cm9rZS13aWR0aDowLjM3MjQ4MztzdHJva2UtZGFzaGFycmF5Om5vbmU7c3Ryb2tlLW9wYWNpdHk6MSINCiAgICAgICAgICAgICBpZD0icmVjdDE5OTgyLTEtMyINCiAgICAgICAgICAgICB3aWR0aD0iNzIuOTM4NTgzIg0KICAgICAgICAgICAgIGhlaWdodD0iMC45NTIzMDA0OSINCiAgICAgICAgICAgICB4PSIxNDIuNjE1NCINCiAgICAgICAgICAgICB5PSI3LjI0OTI2MTQiDQogICAgICAgICAgICAgdHJhbnNmb3JtPSJtYXRyaXgoMSwwLDAuMTg4MDQ5MzQsMC45ODIxNTk1OCwwLDApIiAvPjxnDQogICAgICAgICAgICAgaWQ9Imc4NzIiDQogICAgICAgICAgICAgdHJhbnNmb3JtPSJtYXRyaXgoMC4wNzQ4MDM1NywwLDAuMDE0MjQ4NjgsMC4wNzQ0MTkxNCwyMTIuMzcxMzEsLTEuOTg0NzQ3MikiDQogICAgICAgICAgICAgc3R5bGU9ImZpbGw6I2IzYzFmZjtmaWxsLW9wYWNpdHk6MSI+PHJlY3QNCiAgICAgICAgICAgICAgIHk9IjEyMi4zNTEzNyINCiAgICAgICAgICAgICAgIHg9IjI0LjE5MDQ3NyINCiAgICAgICAgICAgICAgIGhlaWdodD0iMTIuNTY3NzA4Ig0KICAgICAgICAgICAgICAgd2lkdGg9IjI0LjA3MjM1NyINCiAgICAgICAgICAgICAgIGlkPSJyZWN0ODI3Ig0KICAgICAgICAgICAgICAgc3R5bGU9Im9wYWNpdHk6MTtmaWxsOiNiM2MxZmY7ZmlsbC1vcGFjaXR5OjE7c3Ryb2tlOm5vbmU7c3Ryb2tlLXdpZHRoOjEwO3N0cm9rZS1saW5lY2FwOnNxdWFyZTtzdHJva2UtbGluZWpvaW46YmV2ZWw7c3Ryb2tlLW1pdGVybGltaXQ6NDtzdHJva2UtZGFzaGFycmF5Om5vbmU7c3Ryb2tlLW9wYWNpdHk6MTtwYWludC1vcmRlcjpzdHJva2UgZmlsbCBtYXJrZXJzIiAvPjxyZWN0DQogICAgICAgICAgICAgICB5PSIxMTguNzY0NTciDQogICAgICAgICAgICAgICB4PSIxMjguNjcxMDQiDQogICAgICAgICAgICAgICBoZWlnaHQ9IjEyLjU2NzcwOCINCiAgICAgICAgICAgICAgIHdpZHRoPSIyNC4wNzIzNTciDQogICAgICAgICAgICAgICBpZD0icmVjdDgyNy02Ig0KICAgICAgICAgICAgICAgc3R5bGU9Im9wYWNpdHk6MTtmaWxsOiNiM2MxZmY7ZmlsbC1vcGFjaXR5OjE7c3Ryb2tlOm5vbmU7c3Ryb2tlLXdpZHRoOjEwO3N0cm9rZS1saW5lY2FwOnNxdWFyZTtzdHJva2UtbGluZWpvaW46YmV2ZWw7c3Ryb2tlLW1pdGVybGltaXQ6NDtzdHJva2UtZGFzaGFycmF5Om5vbmU7c3Ryb2tlLW9wYWNpdHk6MTtwYWludC1vcmRlcjpzdHJva2UgZmlsbCBtYXJrZXJzIiAvPjxwYXRoDQogICAgICAgICAgICAgICBzb2RpcG9kaTpub2RldHlwZXM9ImNjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjIg0KICAgICAgICAgICAgICAgaW5rc2NhcGU6Y29ubmVjdG9yLWN1cnZhdHVyZT0iMCINCiAgICAgICAgICAgICAgIGlkPSJwYXRoODQ0Ig0KICAgICAgICAgICAgICAgZD0ibSAyMC45Mzg4OTcsMTA0LjE3MTMgaCAtMi4yOTY4NDggdiAyLjQwNzUxIGggMi4zMDUyIHYgNi43NjUyNiBoIDUuMjIwMTA4IHYgNy4zNjU0NyBoIDYuNDY4NTIzIHYgLTcuMjc2MDQgaCAyLjMwMzI5MyB2IDguOTc2OTMgaCAyLjM4NTk3NiB2IC04Ljk4ODc0IGggMTAuMzcwNzIyIGwgMTEuMjIxMTY3LDExLjYyMjc3IDQ5LjUxNDg4MiwyLjgzNDgxIDQuNzQ4MzIsLTE0LjYyMjk1IDI2LjQ2ODA5LC00LjA0NjU3IHYgOS42ODg1MiBoIDIuMjM4MzggdiAtMTAuMDIyNjEgbCAyLjA1MTM1LC0wLjMwODYxIHYgNS4yMzI2MSBoIDYuNDUxMTYgdiAtNy40MzgwMSBsIDEuNTI4NDUsLTAuNTUxMjQgMi4zZS00LC02Ljg0MTU1NCAtMS41Mjg0NSwtMC41NTEyNCB2IC03LjQzODAwNyBoIC02LjQ1MTE2IHYgNS4yMzI2MDcgbCAtMi4wNTEzNSwtMC4zMDg2MSBWIDg1Ljg4MDk5OSBoIC0yLjIzODM4IHYgOS42ODg1MTcgbCAtMjYuNDY4MDksLTQuMDQ2NTcgLTQuNzQ4MzIsLTE0LjYyMjk0NCAtNDkuNTE0ODY3LDIuODM0ODA3IC0xMS4yMjExNywxMS42MjI3NjcgSCAzNy4zMjUzOTIgdiAtOC45ODg3MzcgaCAtMi4zODU5NzYgdiA4Ljk3NjkyNyBIIDMyLjYzNjEyMyBWIDg0LjA2OTcyOSBIIDI2LjE2NzYgdiA3LjM2NTQ2NyBoIC01LjIyMDEwOCB2IDYuNzY1MjYgaCAtMi4zMDUyIHYgMi40MDc1MTQgaCAyLjI5Njg0OCB6Ig0KICAgICAgICAgICAgICAgc3R5bGU9ImZpbGw6I2IzYzFmZjtmaWxsLW9wYWNpdHk6MTtzdHJva2U6bm9uZTtzdHJva2Utd2lkdGg6MC4yNjQ1ODNweDtzdHJva2UtbGluZWNhcDpidXR0O3N0cm9rZS1saW5lam9pbjptaXRlcjtzdHJva2Utb3BhY2l0eToxIiAvPjxyZWN0DQogICAgICAgICAgICAgICB0cmFuc2Zvcm09InNjYWxlKDEsLTEpIg0KICAgICAgICAgICAgICAgeT0iLTgyLjQyNzg4NyINCiAgICAgICAgICAgICAgIHg9IjI0LjE1NTE0OCINCiAgICAgICAgICAgICAgIGhlaWdodD0iMTIuNTY3NzA4Ig0KICAgICAgICAgICAgICAgd2lkdGg9IjI0LjA3MjM1NyINCiAgICAgICAgICAgICAgIGlkPSJyZWN0ODI3LTkiDQogICAgICAgICAgICAgICBzdHlsZT0ib3BhY2l0eToxO2ZpbGw6I2IzYzFmZjtmaWxsLW9wYWNpdHk6MTtzdHJva2U6bm9uZTtzdHJva2Utd2lkdGg6MTA7c3Ryb2tlLWxpbmVjYXA6c3F1YXJlO3N0cm9rZS1saW5lam9pbjpiZXZlbDtzdHJva2UtbWl0ZXJsaW1pdDo0O3N0cm9rZS1kYXNoYXJyYXk6bm9uZTtzdHJva2Utb3BhY2l0eToxO3BhaW50LW9yZGVyOnN0cm9rZSBmaWxsIG1hcmtlcnMiIC8+PHJlY3QNCiAgICAgICAgICAgICAgIHRyYW5zZm9ybT0ic2NhbGUoMSwtMSkiDQogICAgICAgICAgICAgICB5PSItODYuMDE0Njk0Ig0KICAgICAgICAgICAgICAgeD0iMTI4LjYzNTc0Ig0KICAgICAgICAgICAgICAgaGVpZ2h0PSIxMi41Njc3MDgiDQogICAgICAgICAgICAgICB3aWR0aD0iMjQuMDcyMzU3Ig0KICAgICAgICAgICAgICAgaWQ9InJlY3Q4MjctNi04Ig0KICAgICAgICAgICAgICAgc3R5bGU9Im9wYWNpdHk6MTtmaWxsOiNiM2MxZmY7ZmlsbC1vcGFjaXR5OjE7c3Ryb2tlOm5vbmU7c3Ryb2tlLXdpZHRoOjEwO3N0cm9rZS1saW5lY2FwOnNxdWFyZTtzdHJva2UtbGluZWpvaW46YmV2ZWw7c3Ryb2tlLW1pdGVybGltaXQ6NDtzdHJva2UtZGFzaGFycmF5Om5vbmU7c3Ryb2tlLW9wYWNpdHk6MTtwYWludC1vcmRlcjpzdHJva2UgZmlsbCBtYXJrZXJzIiAvPjwvZz48cGF0aA0KICAgICAgICAgICAgIGlkPSJwYXRoNDk5MyINCiAgICAgICAgICAgICBzdHlsZT0iZm9udC1mYW1pbHk6J0ZPUkNFRCBTUVVBUkUnOy1pbmtzY2FwZS1mb250LXNwZWNpZmljYXRpb246J0ZPUkNFRCBTUVVBUkUnO2ZpbGw6I2IzYzFmZjtmaWxsLW9wYWNpdHk6MTtzdHJva2U6IzExMjA1MjtzdHJva2Utd2lkdGg6MS40MDQxMztzdHJva2UtZGFzaGFycmF5Om5vbmU7c3Ryb2tlLW9wYWNpdHk6MSINCiAgICAgICAgICAgICBkPSJtIDIzMS4xNjg4NCwyLjAyOTQyNDggMC43NjkyMSwzNi42OTU3NDEyIGggNi4xMDg3MSBsIC0wLjIxNjE0LC0xMC4zMjMwMDEgaCAzLjczNjU1IGwgOS4zNDk2OSwxMC4zMjMwMDEgaCA1LjY5MzU4IGwgLTAuMDcyNSwtMy40NjM0NzUgLTkuNDEzMjMsLTEwLjUyMjM1OSA4Ljk3NzgzLC0xMC4yNTYxNjEgLTAuMDcyNSwtMy40NjI4OTQgaCAtNS40NTY1MiBsIC05LjE1NDU4LDEwLjMyMjQyIEggMjM3LjY4MjQgTCAyMzcuMjc4MDgsMi4wMjk0MjQ4IFogbSAtMTYxLjAyMTYzOSwwLjA2NjI2IDAuNzY3OTIyLDM2LjYyOTQ4MzIgaCA2LjEwODcwMSBMIDc2LjI1NTkwMiwyLjA5NTY4ODggWiBNIDEuNjIzOTQ3NiwzLjg5Mzk3NTggMi4zNTM5NzkyLDM4LjcyNTE3MiBIIDguNDYyNjgxIEwgOC4xNjk0NTksMjQuNzM5MzM4IEggMzMuMDc5NDIxIEwgMzIuNjQyNjEyLDMuODkzOTc1OCBaIG0gMTExLjU1OTY0MjQsMCAwLjE0OTYzLDcuMTI2MzA2MiBoIDEyLjIxNzQxIGwgMC41ODA5LDI3LjcwNDg5IGggNi4zNDU3NyBsIC0wLjU4MDM5LC0yNy43MDQ4OSBoIDEyLjIxNzQgbCAtMC4xNDkxMiwtNy4xMjYzMDYyIHogbSAzMC45MzA3Miw3LjEyNjMwNjIgMC41ODA0LDI3LjcwNDg5IGggNi4zNDYyOCBMIDE1MC42MDQxNywxNy44Nzk4MSBoIDYuNzYwODkgbCAwLjE0NDEsNi44NTk1MjggaCA2LjM0NTc1IGwgLTAuMjg3MTcsLTEzLjcxOTA1NiB6IG0gNTYuMTAwNjQsLTAuMjY2Nzc4IDAuNTg0NTEsMjcuOTA0ODI5IGggMjQuOTA5OTUgbCAtMC4xNDk1MSwtNy4xMjU3MjYgaCAtMTguNTYzNjkgbCAtMC4yODcyOCwtMTMuNzE5NjM2IGggMTguNTYzNjkgbCAtMC4xNDgyMywtNy4wNTk0NjcgeiBtIC0zMS4wNzM1NSwwLjE5OTkzOSAwLjEzNjc1LDYuNTI2NDg5IGggMTguNTYzNjggbCAwLjA5NDgsNC41Mjg4NDYgaCAtMTguNTYzNjcgbCAwLjM0ODc3LDE2LjY0OTU1NSBoIDI0LjkwOTQzIGwgLTAuNTgwMzQsLTI3LjcwNDg5IHogTSA3Ljg4MjI4MywxMS4wMjAyOCBoIDE4LjU2MzY4NCBsIDAuMTQzNTg3LDYuODU5NTI4IEggOC4wMjU4NzIgWiBtIDMxLjE5NjIwMiwwIDAuNTgwOTEzLDI3LjcwNDg4OSBIIDY0LjU2ODg0MyBMIDYzLjk4ODQ0NiwxMS4wMjAyNzcgWiBtIDQzLjM1NDU5NywwIDAuNTgwOTE0LDI3LjcwNDg4OSBoIDE2LjAxMzQ3NiBsIC02LjMxODUxNiw2Ljk5MjYyNyAwLjA5MzQ1LDQuNDYyMDA1IGggNC44MDQzNTYgTCAxMDcuNjg2MzgsMzguNzI1MTY5IDEwNy4xMDU5OCwxMS4wMjAyOCBoIC02LjEwOTIyIGwgMC40MzY4MSwyMC44NDUzNiBIIDg4Ljk3OTEwOSBMIDg4LjU0MjMwMSwxMS4wMjAyOCBaIE0gNDUuNTY4MzUxLDE3Ljg3OTgwOCBIIDU3Ljc4NTc1NSBMIDU4LjA3ODk3NywzMS44NjU2NCBIIDQ1Ljg2MTU3NCBaIE0gMTc1LjgzNzg2LDI3LjY2OTgzIGggMTIuMjE3NCBsIDAuMTAwMzIsNC43OTUwNDUgaCAtMTIuMjE3NDQgeiIgLz48L2c+PC9nPjwvZz48L2c+PC9zdmc+DQo=" class="logo"><div class="hidden"><p>Loading...</p><div><div><div style="width: 100%;"></div></div></div></div><div class="hidden"><div class="bar"><button class="button"><img class="button-icon" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+DQo8c3ZnDQogICB3aWR0aD0iMjQiDQogICBoZWlnaHQ9IjI0Ig0KICAgdmlld0JveD0iMCAwIDI0IDI0Ig0KICAgdmVyc2lvbj0iMS4xIg0KICAgaWQ9InN2ZzQiDQogICBzb2RpcG9kaTpkb2NuYW1lPSJiYWNrLnN2ZyINCiAgIGlua3NjYXBlOnZlcnNpb249IjEuMi4xICg5YzZkNDFlNDEwLCAyMDIyLTA3LTE0KSINCiAgIHhtbG5zOmlua3NjYXBlPSJodHRwOi8vd3d3Lmlua3NjYXBlLm9yZy9uYW1lc3BhY2VzL2lua3NjYXBlIg0KICAgeG1sbnM6c29kaXBvZGk9Imh0dHA6Ly9zb2RpcG9kaS5zb3VyY2Vmb3JnZS5uZXQvRFREL3NvZGlwb2RpLTAuZHRkIg0KICAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIg0KICAgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+DQogIDxkZWZzDQogICAgIGlkPSJkZWZzOCIgLz4NCiAgPHNvZGlwb2RpOm5hbWVkdmlldw0KICAgICBpZD0ibmFtZWR2aWV3NiINCiAgICAgcGFnZWNvbG9yPSIjZmZmZmZmIg0KICAgICBib3JkZXJjb2xvcj0iIzAwMDAwMCINCiAgICAgYm9yZGVyb3BhY2l0eT0iMC4yNSINCiAgICAgaW5rc2NhcGU6c2hvd3BhZ2VzaGFkb3c9IjIiDQogICAgIGlua3NjYXBlOnBhZ2VvcGFjaXR5PSIwLjAiDQogICAgIGlua3NjYXBlOnBhZ2VjaGVja2VyYm9hcmQ9IjAiDQogICAgIGlua3NjYXBlOmRlc2tjb2xvcj0iI2QxZDFkMSINCiAgICAgc2hvd2dyaWQ9ImZhbHNlIg0KICAgICBpbmtzY2FwZTp6b29tPSI0Mi43OTE2NjciDQogICAgIGlua3NjYXBlOmN4PSIxMS4wNjUyMzkiDQogICAgIGlua3NjYXBlOmN5PSIxMS45ODgzMTUiDQogICAgIGlua3NjYXBlOndpbmRvdy13aWR0aD0iMjU2MCINCiAgICAgaW5rc2NhcGU6d2luZG93LWhlaWdodD0iMTM2OSINCiAgICAgaW5rc2NhcGU6d2luZG93LXg9Ii04Ig0KICAgICBpbmtzY2FwZTp3aW5kb3cteT0iLTgiDQogICAgIGlua3NjYXBlOndpbmRvdy1tYXhpbWl6ZWQ9IjEiDQogICAgIGlua3NjYXBlOmN1cnJlbnQtbGF5ZXI9InN2ZzQiIC8+DQogIDxwYXRoDQogICAgIGQ9Im0gMTAuNDE2NzQ4LDQuMDgzNzM5IGggNS43MjI2NjUgTCAxMC41ODY5NDcsOS42MjUxMjE3IEggMjEuNDk5NTEzIFYgMTQuMzc0ODc4IEggMTAuNTg2OTQ3IGwgNS41NTI0NjYsNS41NDEzODMgSCAxMC40MTY3NDggTCAyLjUwMDQ4NjksMTIgWiINCiAgICAgaWQ9InBhdGgyIg0KICAgICBzdHlsZT0iZmlsbDojZmZmZmZmO2ZpbGwtb3BhY2l0eToxO3N0cm9rZS13aWR0aDowLjc5MTYyNiIgLz4NCjwvc3ZnPg0K"> Back</button><button class="button right"><img class="button-icon" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+DQo8c3ZnDQogICB3aWR0aD0iMjQiDQogICBoZWlnaHQ9IjI0Ig0KICAgZmlsbC1ydWxlPSJldmVub2RkIg0KICAgY2xpcC1ydWxlPSJldmVub2RkIg0KICAgdmVyc2lvbj0iMS4xIg0KICAgaWQ9InN2ZzQiDQogICBzb2RpcG9kaTpkb2NuYW1lPSJpbXBvcnQuc3ZnIg0KICAgaW5rc2NhcGU6dmVyc2lvbj0iMS4yLjEgKDljNmQ0MWU0MTAsIDIwMjItMDctMTQpIg0KICAgeG1sbnM6aW5rc2NhcGU9Imh0dHA6Ly93d3cuaW5rc2NhcGUub3JnL25hbWVzcGFjZXMvaW5rc2NhcGUiDQogICB4bWxuczpzb2RpcG9kaT0iaHR0cDovL3NvZGlwb2RpLnNvdXJjZWZvcmdlLm5ldC9EVEQvc29kaXBvZGktMC5kdGQiDQogICB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciDQogICB4bWxuczpzdmc9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4NCiAgPGRlZnMNCiAgICAgaWQ9ImRlZnM4IiAvPg0KICA8c29kaXBvZGk6bmFtZWR2aWV3DQogICAgIGlkPSJuYW1lZHZpZXc2Ig0KICAgICBwYWdlY29sb3I9IiNmZmZmZmYiDQogICAgIGJvcmRlcmNvbG9yPSIjMDAwMDAwIg0KICAgICBib3JkZXJvcGFjaXR5PSIwLjI1Ig0KICAgICBpbmtzY2FwZTpzaG93cGFnZXNoYWRvdz0iMiINCiAgICAgaW5rc2NhcGU6cGFnZW9wYWNpdHk9IjAuMCINCiAgICAgaW5rc2NhcGU6cGFnZWNoZWNrZXJib2FyZD0iMCINCiAgICAgaW5rc2NhcGU6ZGVza2NvbG9yPSIjZDFkMWQxIg0KICAgICBzaG93Z3JpZD0iZmFsc2UiDQogICAgIGlua3NjYXBlOnpvb209IjQyLjc5MTY2NyINCiAgICAgaW5rc2NhcGU6Y3g9IjExLjQzOTE0MyINCiAgICAgaW5rc2NhcGU6Y3k9IjExLjk4ODMxNSINCiAgICAgaW5rc2NhcGU6d2luZG93LXdpZHRoPSIyNTYwIg0KICAgICBpbmtzY2FwZTp3aW5kb3ctaGVpZ2h0PSIxMzY5Ig0KICAgICBpbmtzY2FwZTp3aW5kb3cteD0iLTgiDQogICAgIGlua3NjYXBlOndpbmRvdy15PSItOCINCiAgICAgaW5rc2NhcGU6d2luZG93LW1heGltaXplZD0iMSINCiAgICAgaW5rc2NhcGU6Y3VycmVudC1sYXllcj0ic3ZnNCIgLz4NCiAgPHBhdGgNCiAgICAgc3R5bGU9ImZpbGw6I2ZmZmZmZjtzdHJva2Utd2lkdGg6MC43ODE4ODkiDQogICAgIGQ9Ik0gOC44NzI0NDQsMTEuMjE4MTExIEggNC4xODExMSB2IDcuODE4ODkgaCAxNS42Mzc3OCB2IC03LjgxODg5IEggMTUuMTI3NTU2IFYgOS42NTQzMzMgaCA2LjI1NTExMiBWIDIwLjYwMDc3OSBIIDIuNjE3MzMyIFYgOS42NTQzMzMgaCA2LjI1NTExMiB6IG0gMy45MDk0NDUsMS41NjM3NzggaCAzLjEyNzU1NiBMIDEyLDE3LjQ3MzIyMyA4LjA5MDU1NSwxMi43ODE4ODkgaCAzLjEyNzU1NiBWIDMuMzk5MjIxIGggMS41NjM3NzggeiINCiAgICAgaWQ9InBhdGgyIiAvPg0KPC9zdmc+DQo="> Import</button></div><div class="tracks-container"><h2>Standard tracks</h2><div class="track"><button class="button"><p class="track-title">Track 1</p><canvas width="27" height="22"></canvas><div class="record">No record</div></button></div><div class="track"><button class="button"><p class="track-title">Track 2</p><canvas width="17" height="22"></canvas><div class="record">No record</div></button></div><div class="track"><button class="button"><p class="track-title">Track 3</p><canvas width="18" height="18"></canvas><div class="record">No record</div></button></div><div class="track"><button class="button"><p class="track-title">Track 4</p><canvas width="61" height="18"></canvas><div class="record">No record</div></button></div><div class="track"><button class="button"><p class="track-title">Track 5</p><canvas width="26" height="43"></canvas><div class="record">No record</div></button></div><div class="track"><button class="button"><p class="track-title">Track 6</p><canvas width="52" height="32"></canvas><div class="record">No record</div></button></div><div class="track"><button class="button"><p class="track-title">Track 7</p><canvas width="28" height="20"></canvas><div class="record">No record</div></button></div></div></div><button class="button-image button"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+DQo8IS0tIENyZWF0ZWQgd2l0aCBJbmtzY2FwZSAoaHR0cDovL3d3dy5pbmtzY2FwZS5vcmcvKSAtLT4NCg0KPHN2Zw0KICAgeG1sbnM6ZGM9Imh0dHA6Ly9wdXJsLm9yZy9kYy9lbGVtZW50cy8xLjEvIg0KICAgeG1sbnM6Y2M9Imh0dHA6Ly9jcmVhdGl2ZWNvbW1vbnMub3JnL25zIyINCiAgIHhtbG5zOnJkZj0iaHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc3ludGF4LW5zIyINCiAgIHhtbG5zOnN2Zz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciDQogICB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciDQogICB4bWxuczpzb2RpcG9kaT0iaHR0cDovL3NvZGlwb2RpLnNvdXJjZWZvcmdlLm5ldC9EVEQvc29kaXBvZGktMC5kdGQiDQogICB4bWxuczppbmtzY2FwZT0iaHR0cDovL3d3dy5pbmtzY2FwZS5vcmcvbmFtZXNwYWNlcy9pbmtzY2FwZSINCiAgIHdpZHRoPSIyNCINCiAgIGhlaWdodD0iMjQiDQogICB2aWV3Qm94PSIwIDAgNi4zNDk5OTk4IDYuMzQ5OTk5OSINCiAgIHZlcnNpb249IjEuMSINCiAgIGlkPSJzdmc4Ig0KICAgaW5rc2NhcGU6dmVyc2lvbj0iMC45Mi40ICg1ZGE2ODljMzEzLCAyMDE5LTAxLTE0KSINCiAgIHNvZGlwb2RpOmRvY25hbWU9ImN1c3RvbWl6ZS5zdmciPg0KICA8ZGVmcw0KICAgICBpZD0iZGVmczIiIC8+DQogIDxzb2RpcG9kaTpuYW1lZHZpZXcNCiAgICAgaWQ9ImJhc2UiDQogICAgIHBhZ2Vjb2xvcj0iI2ZmZmZmZiINCiAgICAgYm9yZGVyY29sb3I9IiM2NjY2NjYiDQogICAgIGJvcmRlcm9wYWNpdHk9IjEuMCINCiAgICAgaW5rc2NhcGU6cGFnZW9wYWNpdHk9IjAuMCINCiAgICAgaW5rc2NhcGU6cGFnZXNoYWRvdz0iMiINCiAgICAgaW5rc2NhcGU6em9vbT0iMzEuNjc4Mzg0Ig0KICAgICBpbmtzY2FwZTpjeD0iMTguOTg5MTk5Ig0KICAgICBpbmtzY2FwZTpjeT0iMTMuMjk2Nzg4Ig0KICAgICBpbmtzY2FwZTpkb2N1bWVudC11bml0cz0ibW0iDQogICAgIGlua3NjYXBlOmN1cnJlbnQtbGF5ZXI9ImxheWVyMiINCiAgICAgc2hvd2dyaWQ9ImZhbHNlIg0KICAgICBpbmtzY2FwZTp3aW5kb3ctd2lkdGg9IjI1NjAiDQogICAgIGlua3NjYXBlOndpbmRvdy1oZWlnaHQ9IjEzNzciDQogICAgIGlua3NjYXBlOndpbmRvdy14PSItOCINCiAgICAgaW5rc2NhcGU6d2luZG93LXk9Ii04Ig0KICAgICBpbmtzY2FwZTp3aW5kb3ctbWF4aW1pemVkPSIxIg0KICAgICB1bml0cz0icHgiIC8+DQogIDxtZXRhZGF0YQ0KICAgICBpZD0ibWV0YWRhdGE1Ij4NCiAgICA8cmRmOlJERj4NCiAgICAgIDxjYzpXb3JrDQogICAgICAgICByZGY6YWJvdXQ9IiI+DQogICAgICAgIDxkYzpmb3JtYXQ+aW1hZ2Uvc3ZnK3htbDwvZGM6Zm9ybWF0Pg0KICAgICAgICA8ZGM6dHlwZQ0KICAgICAgICAgICByZGY6cmVzb3VyY2U9Imh0dHA6Ly9wdXJsLm9yZy9kYy9kY21pdHlwZS9TdGlsbEltYWdlIiAvPg0KICAgICAgICA8ZGM6dGl0bGU+PC9kYzp0aXRsZT4NCiAgICAgIDwvY2M6V29yaz4NCiAgICA8L3JkZjpSREY+DQogIDwvbWV0YWRhdGE+DQogIDxnDQogICAgIGlua3NjYXBlOmdyb3VwbW9kZT0ibGF5ZXIiDQogICAgIGlkPSJsYXllcjIiDQogICAgIGlua3NjYXBlOmxhYmVsPSJMYXllciAyIg0KICAgICB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtNTMuMTYzMjcsLTE2My4wOTAzMSkiDQogICAgIHN0eWxlPSJkaXNwbGF5OmlubGluZSI+DQogICAgPGcNCiAgICAgICBpZD0iZzg3MiINCiAgICAgICB0cmFuc2Zvcm09Im1hdHJpeCgwLjA0Njk1OTIzLDAsMCwwLjA0NjcxNzksNTIuMzE0MjA2LDE2MS40ODMxMSkiPg0KICAgICAgPHJlY3QNCiAgICAgICAgIHk9IjEyMi4zNTEzNyINCiAgICAgICAgIHg9IjI0LjE5MDQ3NyINCiAgICAgICAgIGhlaWdodD0iMTIuNTY3NzA4Ig0KICAgICAgICAgd2lkdGg9IjI0LjA3MjM1NyINCiAgICAgICAgIGlkPSJyZWN0ODI3Ig0KICAgICAgICAgc3R5bGU9Im9wYWNpdHk6MTtmaWxsOiNmZmZmZmY7ZmlsbC1vcGFjaXR5OjE7c3Ryb2tlOm5vbmU7c3Ryb2tlLXdpZHRoOjEwO3N0cm9rZS1saW5lY2FwOnNxdWFyZTtzdHJva2UtbGluZWpvaW46YmV2ZWw7c3Ryb2tlLW1pdGVybGltaXQ6NDtzdHJva2UtZGFzaGFycmF5Om5vbmU7c3Ryb2tlLW9wYWNpdHk6MTtwYWludC1vcmRlcjpzdHJva2UgZmlsbCBtYXJrZXJzIiAvPg0KICAgICAgPHJlY3QNCiAgICAgICAgIHk9IjExOC43NjQ1NyINCiAgICAgICAgIHg9IjEyOC42NzEwNCINCiAgICAgICAgIGhlaWdodD0iMTIuNTY3NzA4Ig0KICAgICAgICAgd2lkdGg9IjI0LjA3MjM1NyINCiAgICAgICAgIGlkPSJyZWN0ODI3LTYiDQogICAgICAgICBzdHlsZT0ib3BhY2l0eToxO2ZpbGw6I2ZmZmZmZjtmaWxsLW9wYWNpdHk6MTtzdHJva2U6bm9uZTtzdHJva2Utd2lkdGg6MTA7c3Ryb2tlLWxpbmVjYXA6c3F1YXJlO3N0cm9rZS1saW5lam9pbjpiZXZlbDtzdHJva2UtbWl0ZXJsaW1pdDo0O3N0cm9rZS1kYXNoYXJyYXk6bm9uZTtzdHJva2Utb3BhY2l0eToxO3BhaW50LW9yZGVyOnN0cm9rZSBmaWxsIG1hcmtlcnMiIC8+DQogICAgICA8cGF0aA0KICAgICAgICAgc29kaXBvZGk6bm9kZXR5cGVzPSJjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjYyINCiAgICAgICAgIGlua3NjYXBlOmNvbm5lY3Rvci1jdXJ2YXR1cmU9IjAiDQogICAgICAgICBpZD0icGF0aDg0NCINCiAgICAgICAgIGQ9Im0gMjAuOTM4ODk3LDEwNC4xNzEzIGggLTIuMjk2ODQ4IHYgMi40MDc1MSBoIDIuMzA1MiB2IDYuNzY1MjYgaCA1LjIyMDEwOCB2IDcuMzY1NDcgaCA2LjQ2ODUyMyB2IC03LjI3NjA0IGggMi4zMDMyOTMgdiA4Ljk3NjkzIGggMi4zODU5NzYgdiAtOC45ODg3NCBoIDEwLjM3MDcyMiBsIDExLjIyMTE2NywxMS42MjI3NyA0OS41MTQ4ODIsMi44MzQ4MSA0Ljc0ODMyLC0xNC42MjI5NSAyNi40NjgwOSwtNC4wNDY1NyB2IDkuNjg4NTIgaCAyLjIzODM4IHYgLTEwLjAyMjYxIGwgMi4wNTEzNSwtMC4zMDg2MSB2IDUuMjMyNjEgaCA2LjQ1MTE2IHYgLTcuNDM4MDEgbCAxLjUyODQ1LC0wLjU1MTI0IDIuM2UtNCwtNi44NDE1NTQgLTEuNTI4NDUsLTAuNTUxMjQgdiAtNy40MzgwMDcgaCAtNi40NTExNiB2IDUuMjMyNjA3IGwgLTIuMDUxMzUsLTAuMzA4NjEgViA4NS44ODA5OTkgaCAtMi4yMzgzOCB2IDkuNjg4NTE3IGwgLTI2LjQ2ODA5LC00LjA0NjU3IC00Ljc0ODMyLC0xNC42MjI5NDQgLTQ5LjUxNDg2NywyLjgzNDgwNyAtMTEuMjIxMTcsMTEuNjIyNzY3IEggMzcuMzI1MzkyIHYgLTguOTg4NzM3IGggLTIuMzg1OTc2IHYgOC45NzY5MjcgSCAzMi42MzYxMjMgViA4NC4wNjk3MjkgSCAyNi4xNjc2IHYgNy4zNjU0NjcgaCAtNS4yMjAxMDggdiA2Ljc2NTI2IGggLTIuMzA1MiB2IDIuNDA3NTE0IGggMi4yOTY4NDggeiINCiAgICAgICAgIHN0eWxlPSJmaWxsOiNmZmZmZmY7ZmlsbC1vcGFjaXR5OjE7c3Ryb2tlOm5vbmU7c3Ryb2tlLXdpZHRoOjAuMjY0NTgzMzJweDtzdHJva2UtbGluZWNhcDpidXR0O3N0cm9rZS1saW5lam9pbjptaXRlcjtzdHJva2Utb3BhY2l0eToxIiAvPg0KICAgICAgPHJlY3QNCiAgICAgICAgIHRyYW5zZm9ybT0ic2NhbGUoMSwtMSkiDQogICAgICAgICB5PSItODIuNDI3ODg3Ig0KICAgICAgICAgeD0iMjQuMTU1MTQ4Ig0KICAgICAgICAgaGVpZ2h0PSIxMi41Njc3MDgiDQogICAgICAgICB3aWR0aD0iMjQuMDcyMzU3Ig0KICAgICAgICAgaWQ9InJlY3Q4MjctOSINCiAgICAgICAgIHN0eWxlPSJvcGFjaXR5OjE7ZmlsbDojZmZmZmZmO2ZpbGwtb3BhY2l0eToxO3N0cm9rZTpub25lO3N0cm9rZS13aWR0aDoxMDtzdHJva2UtbGluZWNhcDpzcXVhcmU7c3Ryb2tlLWxpbmVqb2luOmJldmVsO3N0cm9rZS1taXRlcmxpbWl0OjQ7c3Ryb2tlLWRhc2hhcnJheTpub25lO3N0cm9rZS1vcGFjaXR5OjE7cGFpbnQtb3JkZXI6c3Ryb2tlIGZpbGwgbWFya2VycyIgLz4NCiAgICAgIDxyZWN0DQogICAgICAgICB0cmFuc2Zvcm09InNjYWxlKDEsLTEpIg0KICAgICAgICAgeT0iLTg2LjAxNDY5NCINCiAgICAgICAgIHg9IjEyOC42MzU3NCINCiAgICAgICAgIGhlaWdodD0iMTIuNTY3NzA4Ig0KICAgICAgICAgd2lkdGg9IjI0LjA3MjM1NyINCiAgICAgICAgIGlkPSJyZWN0ODI3LTYtOCINCiAgICAgICAgIHN0eWxlPSJvcGFjaXR5OjE7ZmlsbDojZmZmZmZmO2ZpbGwtb3BhY2l0eToxO3N0cm9rZTpub25lO3N0cm9rZS13aWR0aDoxMDtzdHJva2UtbGluZWNhcDpzcXVhcmU7c3Ryb2tlLWxpbmVqb2luOmJldmVsO3N0cm9rZS1taXRlcmxpbWl0OjQ7c3Ryb2tlLWRhc2hhcnJheTpub25lO3N0cm9rZS1vcGFjaXR5OjE7cGFpbnQtb3JkZXI6c3Ryb2tlIGZpbGwgbWFya2VycyIgLz4NCiAgICA8L2c+DQogIDwvZz4NCjwvc3ZnPg0K"><p>Customize</p><p></p></button><button class="button-image button"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+DQo8c3ZnDQogICB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iDQogICB4bWxuczpjYz0iaHR0cDovL2NyZWF0aXZlY29tbW9ucy5vcmcvbnMjIg0KICAgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIg0KICAgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyINCiAgIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyINCiAgIHhtbG5zOnNvZGlwb2RpPSJodHRwOi8vc29kaXBvZGkuc291cmNlZm9yZ2UubmV0L0RURC9zb2RpcG9kaS0wLmR0ZCINCiAgIHhtbG5zOmlua3NjYXBlPSJodHRwOi8vd3d3Lmlua3NjYXBlLm9yZy9uYW1lc3BhY2VzL2lua3NjYXBlIg0KICAgd2lkdGg9IjI0Ig0KICAgaGVpZ2h0PSIyNCINCiAgIGZpbGwtcnVsZT0iZXZlbm9kZCINCiAgIGNsaXAtcnVsZT0iZXZlbm9kZCINCiAgIHZlcnNpb249IjEuMSINCiAgIGlkPSJzdmc4MjciDQogICBzb2RpcG9kaTpkb2NuYW1lPSJlZGl0b3Iuc3ZnIg0KICAgaW5rc2NhcGU6dmVyc2lvbj0iMC45Mi40ICg1ZGE2ODljMzEzLCAyMDE5LTAxLTE0KSI+DQogIDxtZXRhZGF0YQ0KICAgICBpZD0ibWV0YWRhdGE4MzMiPg0KICAgIDxyZGY6UkRGPg0KICAgICAgPGNjOldvcmsNCiAgICAgICAgIHJkZjphYm91dD0iIj4NCiAgICAgICAgPGRjOmZvcm1hdD5pbWFnZS9zdmcreG1sPC9kYzpmb3JtYXQ+DQogICAgICAgIDxkYzp0eXBlDQogICAgICAgICAgIHJkZjpyZXNvdXJjZT0iaHR0cDovL3B1cmwub3JnL2RjL2RjbWl0eXBlL1N0aWxsSW1hZ2UiIC8+DQogICAgICA8L2NjOldvcms+DQogICAgPC9yZGY6UkRGPg0KICA8L21ldGFkYXRhPg0KICA8ZGVmcw0KICAgICBpZD0iZGVmczgzMSIgLz4NCiAgPHNvZGlwb2RpOm5hbWVkdmlldw0KICAgICBwYWdlY29sb3I9IiNmZmZmZmYiDQogICAgIGJvcmRlcmNvbG9yPSIjNjY2NjY2Ig0KICAgICBib3JkZXJvcGFjaXR5PSIxIg0KICAgICBvYmplY3R0b2xlcmFuY2U9IjEwIg0KICAgICBncmlkdG9sZXJhbmNlPSIxMCINCiAgICAgZ3VpZGV0b2xlcmFuY2U9IjEwIg0KICAgICBpbmtzY2FwZTpwYWdlb3BhY2l0eT0iMCINCiAgICAgaW5rc2NhcGU6cGFnZXNoYWRvdz0iMiINCiAgICAgaW5rc2NhcGU6d2luZG93LXdpZHRoPSIxMjc4Ig0KICAgICBpbmtzY2FwZTp3aW5kb3ctaGVpZ2h0PSIxMzY4Ig0KICAgICBpZD0ibmFtZWR2aWV3ODI5Ig0KICAgICBzaG93Z3JpZD0iZmFsc2UiDQogICAgIGlua3NjYXBlOnpvb209IjE3LjM1MzU3OSINCiAgICAgaW5rc2NhcGU6Y3g9IjExLjY3MzA2OCINCiAgICAgaW5rc2NhcGU6Y3k9IjYuOTc1MzIxMiINCiAgICAgaW5rc2NhcGU6d2luZG93LXg9Ii03Ig0KICAgICBpbmtzY2FwZTp3aW5kb3cteT0iMCINCiAgICAgaW5rc2NhcGU6d2luZG93LW1heGltaXplZD0iMCINCiAgICAgaW5rc2NhcGU6Y3VycmVudC1sYXllcj0ic3ZnODI3IiAvPg0KICA8cGF0aA0KICAgICBkPSJNIDExLjIwMTY4OCwyMS41Nzk3NSBIIDYuNDExODEyNSBWIDguMDA4NDM3NSBoIDQuNzg5ODc1NSB6IG0gMTAuMzc4MDYyLDAgaCAtOC43ODE0MzggdiAtNC43ODk4NzUgaCAzLjE5MzI1IHYgLTMuMTkzMjUgSCAyMS41Nzk3NSBaIE0gOS42MDUwNjI1LDE4LjM4NjUgOC4wMDg0Mzc1LDE5LjE4NDgxMiB2IDAuNzk4MzEzIGwgMS41OTY2MjUsLTAuNzk4MzEzIHogbSA2LjM4NjQ5OTUsMS41OTY2MjUgViAxOC4zODY1IGggLTEuNTk2NjI1IHYgMS41OTY2MjUgeiBNIDE5Ljk4MzEyNSwxOC4zODY1IGggLTIuMzk0OTM4IHYgMS41OTY2MjUgaCAyLjM5NDkzOCB6IE0gOS42MDUwNjI1LDE1Ljk5MTU2MiA4LjAwODQzNzUsMTYuNzg5ODc1IHYgMC43OTgzMTIgbCAxLjU5NjYyNSwtMC43OTgzMTIgeiBNIDE5Ljk4MzEyNSwxNS4xOTMyNSBoIC0yLjM5NDkzOCB2IDEuNTk2NjI1IGggMi4zOTQ5MzggeiBNIDkuNjA1MDYyNSwxMy41OTY2MjUgOC4wMDg0Mzc1LDE0LjM5NDkzNyB2IDAuNzk4MzEzIGwgMS41OTY2MjUsLTAuNzk4MzEzIHogbSAwLC0yLjM5NDkzNyBMIDguMDA4NDM3NSwxMiB2IDAuNzk4MzEyIEwgOS42MDUwNjI1LDEyIFogTSAxMS4yMDE2ODgsNC4wMTY4NzUgaCA3Ljk4MzEyNCBMIDIxLjU3OTc1LDYuNDExODEyNSBWIDcuMjEwMTI1IEggMTkuMTg0ODEyIFYgOS42MDUwNjI1IEggMjEuNTc5NzUgViAxMiBIIDE1Ljk5MTU2MiBWIDkuNjA1MDYyNSBIIDE4LjM4NjUgViA3LjIxMDEyNSBIIDUuNjEzNSBWIDkuNjA1MDYyNSBIIDIuNDIwMjUgViA0LjAxNjg3NSBIIDYuNDExODEyNSBWIDIuNDIwMjUgSCAxMS4yMDE2ODggWiBNIDkuNjA1MDYyNSw4LjgwNjc1IDguMDA4NDM3NSw5LjYwNTA2MjUgdiAwLjc5ODMxMjUgbCAxLjU5NjYyNSwtMC43OTgzMTI1IHoiDQogICAgIGlkPSJwYXRoODI1Ig0KICAgICBpbmtzY2FwZTpjb25uZWN0b3ItY3VydmF0dXJlPSIwIg0KICAgICBzdHlsZT0iZmlsbDojZmZmZmZmO3N0cm9rZS13aWR0aDowLjc5ODMxMjQ5IiAvPg0KPC9zdmc+DQo="><p>Editor</p><p></p></button><button class="button-image button"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+DQo8c3ZnDQogICB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iDQogICB4bWxuczpjYz0iaHR0cDovL2NyZWF0aXZlY29tbW9ucy5vcmcvbnMjIg0KICAgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIg0KICAgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyINCiAgIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyINCiAgIHhtbG5zOnNvZGlwb2RpPSJodHRwOi8vc29kaXBvZGkuc291cmNlZm9yZ2UubmV0L0RURC9zb2RpcG9kaS0wLmR0ZCINCiAgIHhtbG5zOmlua3NjYXBlPSJodHRwOi8vd3d3Lmlua3NjYXBlLm9yZy9uYW1lc3BhY2VzL2lua3NjYXBlIg0KICAgd2lkdGg9IjI0Ig0KICAgaGVpZ2h0PSIyNCINCiAgIHZpZXdCb3g9IjAgMCAyNCAyNCINCiAgIHZlcnNpb249IjEuMSINCiAgIGlkPSJzdmc4MTciDQogICBzb2RpcG9kaTpkb2NuYW1lPSJwbGF5LnN2ZyINCiAgIGlua3NjYXBlOnZlcnNpb249IjAuOTIuNCAoNWRhNjg5YzMxMywgMjAxOS0wMS0xNCkiPg0KICA8bWV0YWRhdGENCiAgICAgaWQ9Im1ldGFkYXRhODIzIj4NCiAgICA8cmRmOlJERj4NCiAgICAgIDxjYzpXb3JrDQogICAgICAgICByZGY6YWJvdXQ9IiI+DQogICAgICAgIDxkYzpmb3JtYXQ+aW1hZ2Uvc3ZnK3htbDwvZGM6Zm9ybWF0Pg0KICAgICAgICA8ZGM6dHlwZQ0KICAgICAgICAgICByZGY6cmVzb3VyY2U9Imh0dHA6Ly9wdXJsLm9yZy9kYy9kY21pdHlwZS9TdGlsbEltYWdlIiAvPg0KICAgICAgPC9jYzpXb3JrPg0KICAgIDwvcmRmOlJERj4NCiAgPC9tZXRhZGF0YT4NCiAgPGRlZnMNCiAgICAgaWQ9ImRlZnM4MjEiIC8+DQogIDxzb2RpcG9kaTpuYW1lZHZpZXcNCiAgICAgcGFnZWNvbG9yPSIjZmZmZmZmIg0KICAgICBib3JkZXJjb2xvcj0iIzY2NjY2NiINCiAgICAgYm9yZGVyb3BhY2l0eT0iMSINCiAgICAgb2JqZWN0dG9sZXJhbmNlPSIxMCINCiAgICAgZ3JpZHRvbGVyYW5jZT0iMTAiDQogICAgIGd1aWRldG9sZXJhbmNlPSIxMCINCiAgICAgaW5rc2NhcGU6cGFnZW9wYWNpdHk9IjAiDQogICAgIGlua3NjYXBlOnBhZ2VzaGFkb3c9IjIiDQogICAgIGlua3NjYXBlOndpbmRvdy13aWR0aD0iMTI3OCINCiAgICAgaW5rc2NhcGU6d2luZG93LWhlaWdodD0iMTM2OCINCiAgICAgaWQ9Im5hbWVkdmlldzgxOSINCiAgICAgc2hvd2dyaWQ9ImZhbHNlIg0KICAgICBpbmtzY2FwZTp6b29tPSIxNy4zNTM1NzkiDQogICAgIGlua3NjYXBlOmN4PSIxMC40NjMxOTkiDQogICAgIGlua3NjYXBlOmN5PSIxMS40ODg2NiINCiAgICAgaW5rc2NhcGU6d2luZG93LXg9Ii03Ig0KICAgICBpbmtzY2FwZTp3aW5kb3cteT0iMCINCiAgICAgaW5rc2NhcGU6d2luZG93LW1heGltaXplZD0iMCINCiAgICAgaW5rc2NhcGU6Y3VycmVudC1sYXllcj0ic3ZnODE3IiAvPg0KICA8cGF0aA0KICAgICBkPSJNIDUsMjIgViAyIGwgMTgsMTAgeiINCiAgICAgaWQ9InBhdGg4MTUiDQogICAgIGlua3NjYXBlOmNvbm5lY3Rvci1jdXJ2YXR1cmU9IjAiDQogICAgIHN0eWxlPSJmaWxsOiNmZmZmZmYiIC8+DQo8L3N2Zz4NCg=="><p>Play</p><p></p></button><div class="bottom-buttons"></div><div class="info"><a href="https://www.kodub.com" target="_blank">kodub.com - VERSION 0.2.0</a></div></div></div>
 		<div id="transition-layer" style="opacity: 0;"></div>
 
@@ -1305,7 +1316,7 @@ input[type="text"]:focus-visible {
 /* LAVA MODE boot flag: read BEFORE the game's deferred game module loads so
    the GLB wall filter can strip walls at load time. Toggled by the class
    teacher's Track-mode setting, or the solo banner button. */
-try{if(localStorage.getItem("ptc_lava")==="1")window.__PTC_LAVA=true;}catch(e){}
+try{if(__LS.getItem("ptc_lava")==="1")window.__PTC_LAVA=true;}catch(e){}
 const $ = id => document.getElementById(id);
 const $$ = s => [...document.querySelectorAll(s)];
 
@@ -1398,6 +1409,74 @@ function appliedLevel(key){
   const v=(t==null||isNaN(t))?owned:Math.max(0,Math.min(owned,parseInt(t)));
   return v;
 }
+/* ---------------- ADVANCED PHYSICS TUNING ----------------
+   A broader set of physics properties students can dial in the Garage.
+   Each is stored on the student doc (`physTune`), validated on read, and
+   applied LIVE via the frame job. Range and defaults are teacher-controlled. */
+const PHYS_DEFS=[
+  {key:"mass",label:"⚖️ Vehicle Mass",desc:"Heavier = more stable but slower to accelerate/turn",
+    min:0.5,max:2.0,step:0.05,def:1.0,fmt:v=>`${v.toFixed(2)}×`},
+  {key:"weightDist",label:"📐 Weight Distribution",desc:"Front-biased (understeer) vs rear-biased (oversteer)",
+    min:0.5,max:1.5,step:0.05,def:1.0,fmt:v=>`${v.toFixed(2)}×`},
+  {key:"downforce",label:"💨 Downforce",desc:"Pushes car into the road — more grip at high speed",
+    min:0.5,max:3.0,step:0.1,def:1.0,fmt:v=>`${v.toFixed(1)}×`},
+  {key:"suspStiff",label:"🔧 Suspension Stiffness",desc:"Stiffer = flatter cornering, less float",
+    min:0.5,max:2.0,step:0.05,def:1.0,fmt:v=>`${v.toFixed(2)}×`},
+  {key:"suspDamp",label:"🛞 Suspension Damping",desc:"Controls how fast the body settles after bumps",
+    min:0.5,max:2.0,step:0.05,def:1.0,fmt:v=>`${v.toFixed(2)}×`},
+  {key:"steerSpeed",label:"🎯 Steering Speed",desc:"How fast the wheels turn in/out",
+    min:0.5,max:2.0,step:0.05,def:1.0,fmt:v=>`${v.toFixed(2)}×`},
+  {key:"stability",label:"🧲 Turning Stability",desc:"Extra yaw damping — kills wobble and catch-drift",
+    min:0.5,max:3.0,step:0.1,def:1.0,fmt:v=>`${v.toFixed(1)}×`},
+  {key:"driftKeep",label:"🏁 Drift Momentum",desc:"How much speed a deliberate drift keeps",
+    min:0.0,max:1.0,step:0.05,def:0.5,fmt:v=>`${Math.round(v*100)}%`},
+  {key:"airG",label:"🪂 Air Gravity",desc:"Extra gravity while airborne — snappier landings",
+    min:1.0,max:3.0,step:0.1,def:1.6,fmt:v=>`${v.toFixed(1)}×`}
+];
+function physTuneAllowed(){return S().allowPhysTune!==false;}    // teacher gate
+/* HARD ENGINE-SAFE LIMITS — a teacher-provided range is itself clamped
+   to these so no setting can destabilize the simulation. */
+const PHYS_HARD_LIMITS={
+  mass:{min:0.5,max:2.0},
+  weightDist:{min:0.5,max:1.5},
+  downforce:{min:0.5,max:3.0},
+  suspStiff:{min:0.5,max:2.0},
+  suspDamp:{min:0.5,max:2.0},
+  steerSpeed:{min:0.5,max:2.0},
+  stability:{min:0.5,max:3.0},
+  driftKeep:{min:0.0,max:1.0},
+  airG:{min:1.0,max:3.0}
+};
+function physTuneGet(key){
+  const d=PHYS_DEFS.find(x=>x.key===key);
+  if(!d)return 1.0;
+  if(meData&&meData.physTuneIgnored&&!physTuneAllowed())return d.def;   // teacher turned off
+  const t=(meData&&meData.physTune)||{};
+  let v=parseFloat(t[key]);
+  if(!isFinite(v))v=d.def;
+  // Clamp to teacher's range, BUT the teacher's range is itself clamped
+  // to the hard engine-safe limit.
+  const hard=PHYS_HARD_LIMITS[key]||{min:d.min,max:d.max};
+  const range=S().physRange||{};
+  const rMin=Math.max(hard.min,cfgNum(range[`${key}Min`],d.min));
+  const rMax=Math.min(hard.max,cfgNum(range[`${key}Max`],d.max));
+  // If the clamped range is inverted, fall back to the hard default
+  if(rMin>=rMax)return d.def;
+  return Math.max(Math.min(rMax,v),Math.min(rMax,rMin));
+}
+/* Bullet Vec3 helper — lazily resolved from the game's global. */
+let __PTCVec3Ctor=null;
+function __PTCVec3(x,y,z){
+  if(!__PTCVec3Ctor){
+    try{
+      if(window.Vec3)__PTCVec3Ctor=window.Vec3;
+      else if(window.Ammo&&window.Ammo.btVector3)__PTCVec3Ctor=window.Ammo.btVector3;
+      else if(window.BtVector3)__PTCVec3Ctor=window.BtVector3;
+    }catch(e){}
+    if(!__PTCVec3Ctor)__PTCVec3Ctor=function(a,b,c){this.x=a;this.y=b;this.z=c;};
+  }
+  return new __PTCVec3Ctor(x,y,z);
+}
 function carPerf(){
   const s=carBaseMults();   // class settings, or the imported car's packed base
   const eLvl=appliedLevel("engine"),tLvl=appliedLevel("tires"),aLvl=appliedLevel("aero"),bLvl=appliedLevel("brakes");
@@ -1405,7 +1484,8 @@ function carPerf(){
      level) than acceleration (+12%) and top speed (+8%), so a fully-maxed
      car stays controllable — the tires always outpace the engine. */
   return {
-    accel:clampMult(cfgNum(s.carAccelMult,1))*(1+0.12*eLvl),   // up to +144%
+    /* accel: base × teacher mult × engine upgrade × TRANSMISSION (launch). */
+    accel:clampMult(cfgNum(s.carAccelMult,1))*(1+0.12*eLvl)*(1+0.08*appliedLevel("trans")),
     top:clampMult(cfgNum(s.carTopSpeedMult,1))*(1+0.08*aLvl),   // up to +96%
     grip:clampMult(cfgNum(s.carGripMult,1))*(1+0.15*tLvl),      // up to +180% (handling!)
     brake:clampMult(cfgNum(s.carBrakeMult,1))*(1+0.10*bLvl),     // up to +120%
@@ -1413,7 +1493,23 @@ function carPerf(){
     driftKeep:Math.min(0.9,0.5+0.05*tLvl),                       // drift momentum keep (base 50% — drifts carry their speed)
     turbo:[1,2,2.5,3,3.5,4][Math.min(5,upgradeLevel("turbo"))]||1,   // up to 4x (5 levels)
     jump:Math.min(5,upgradeLevel("jump")),                       // 0-5
-    airG:1.6                                                    // extra gravity while airborne
+    airG:1.6,                                                   // extra gravity while airborne
+    /* Advanced physics-tune (student Garage sliders, teacher-ranged),
+       FOLDED WITH the new upgrade effects so both stack. */
+    mass:((physTuneAllowed()?physTuneGet("mass"):1.0)*(1-0.04*appliedLevel("weight"))),
+    weightDist:physTuneAllowed()?physTuneGet("weightDist"):1.0,
+    downforce:physTuneAllowed()?physTuneGet("downforce"):1.0,
+    suspStiff:((physTuneAllowed()?physTuneGet("suspStiff"):1.0)*(1+0.10*appliedLevel("susp"))),
+    suspDamp:physTuneAllowed()?physTuneGet("suspDamp"):1.0,
+    steerSpeed:((physTuneAllowed()?physTuneGet("steerSpeed"):1.0)*(1+0.10*appliedLevel("steer"))),
+    stability:physTuneAllowed()?physTuneGet("stability"):1.0,
+    driftTune:physTuneAllowed()?physTuneGet("driftKeep"):0.5,
+    airGTune:physTuneAllowed()?physTuneGet("airG"):1.6,
+    /* trans: launch / gearing — folds into accel (used by applyEngineForce). */
+    trans:1+0.08*appliedLevel("trans"),
+    weightRed:1-0.04*appliedLevel("weight"),
+    suspUp:1+0.10*appliedLevel("susp"),
+    steerUp:1+0.10*appliedLevel("steer")
   };
 }
 /* Wrap the vehicle's physics setters: engine force is scaled by the LIVE
@@ -1430,7 +1526,9 @@ function installCarPerf(car){
       if(force){
         const p=carPerf();
         let f=force*p.accel;
-        if(isDrifting(car))f*=(1+p.driftKeep);      // drifts keep momentum
+        /* Use the student's drift-momentum tune if they set one. */
+        const dk=(p.driftTune!=null&&isFinite(p.driftTune))?p.driftTune:p.driftKeep;
+        if(isDrifting(car))f*=(1+dk);      // drifts keep momentum
         return orig(f,wheel);                         // turbo is a JET now — real thrust, not engine force
       }
       return orig(force,wheel);
@@ -1611,7 +1709,7 @@ HOOKS.frameJobs.push(function carFeelFrameJob(){
       }
     }catch(_e){}
     if(typeof b.setGravity==="function"){
-      const g=p.airG||1.6;
+      const g=(p.airGTune!=null&&isFinite(p.airGTune))?p.airGTune:(p.airG||1.6);
       if(!grounded){
         if(b.__ptcGravSet!==2){
           const v=new window.Ammo.btVector3(0,-9.82*g,0);
@@ -1653,7 +1751,9 @@ function carPerfFrameJob(){
   const car=livePlayerCar();
   if(!car)return;
     const p=carPerf();
-  const key=p.accel+"|"+p.top+"|"+p.grip+"|"+(p.brake||1)+"|"+(p.steer||1);
+  const key=p.accel+"|"+p.top+"|"+p.grip+"|"+(p.brake||1)+"|"+(p.steer||1)
+    +"|"+(p.mass||1)+"|"+(p.weightDist||1)+"|"+(p.downforce||1)
+    +"|"+(p.suspStiff||1)+"|"+(p.suspDamp||1)+"|"+(p.steerSpeed||1)+"|"+(p.stability||1);
   const fresh=car!==carPerfState.car;
   /* DELIBERATE DRIFT: while it's wanted (or just ended) the grip job must
      re-apply EVERY frame — the rear-grip cut is live, not cached. */
@@ -1683,6 +1783,57 @@ function carPerfFrameJob(){
     }
     ok=true;
   }catch(e){}
+  /* DOWNFORCE: apply a real downward force proportional to speed² —
+     the same physics as a real aero wing. More downforce = more grip at
+     high speed (the tires press harder). */
+  try{
+    if(p.downforce&&p.downforce!==1&&running){
+      const b=car.getRigidBody();
+      const v=b.getLinearVelocity();
+      const sp=Math.hypot(v.x(),v.z());
+      if(sp>3&&anyWheelGrounded(car)){
+        const df=(p.downforce-1)*sp*sp*0.08;
+        b.applyCentralForce(__PTCVec3(0,-df,0));
+      }
+    }
+  }catch(e){}
+  /* MASS: apply a constant downward "weight" force (not gravity) that scales
+     the car's effective mass feel — heavier = more planted, slower to
+     accelerate/turn. Implemented via damping + downforce rather than
+     mutating inertia (which would destabilize Bullet). */
+  try{
+    if(p.mass&&p.mass!==1&&running){
+      const b=car.getRigidBody();
+      const massMult=Math.min(2.0,Math.max(0.5,p.mass||1));
+      // Extra gravity-ish force proportional to mass
+      const extraG=(massMult-1)*9.8*0.15;
+      b.applyCentralForce(__PTCVec3(0,-extraG,0));
+      // Heavier also = more linear damping (slower to accelerate)
+      const lin=(typeof b.getLinearDamping==="function")?b.getLinearDamping():null;
+      if(lin!=null&&carPerfState.base&&carPerfState.base.lin!=null)
+        b.setDamping(carPerfState.base.lin*massMult/Math.max(0.25,p.top),
+          carPerfState.base.ang!=null?carPerfState.base.ang:0.1);
+    }
+  }catch(e){}
+  /* SUSPENSION: set per-wheel suspension stiffness + damping via the
+     Bullet vehicle's wheel info. Stiffer = flatter cornering, more damping
+     = faster settle after bumps. */
+  try{
+    if(p.suspStiff&&p.suspStiff!==1){
+      const n=(typeof car.getNumWheels==="function")?car.getNumWheels():4;
+      for(let i=0;i<n;i++){
+        const w=car.getWheelInfo&&car.getWheelInfo(i);
+        if(!w||!w.m_suspensionStiffness)continue;
+        if(!carPerfState.base.suspStiff)carPerfState.base.suspStiff=w.m_suspensionStiffness;
+        if(!carPerfState.base.suspDamp)carPerfState.base.suspDamp=w.m_wheelsDampingRelaxation;
+        const stiff=Math.max(0.1,carPerfState.base.suspStiff*p.suspStiff);
+        const damp=Math.max(0.1,(carPerfState.base.suspDamp||0.5)*(p.suspDamp||1));
+        w.m_suspensionStiffness=stiff;
+        w.m_wheelsDampingRelaxation=damp;
+        if(w.m_wheelsDampingCompression!=null)w.m_wheelsDampingCompression=damp*0.5;
+      }
+    }
+  }catch(e){}
   /* top speed: scale DOWN the chassis' linear damping (drag); the angular
      damping is captured and preserved as-is. */
   try{
@@ -1693,8 +1844,12 @@ function carPerfFrameJob(){
       if(!carPerfState.base)carPerfState.base={fric:{},lin:null,ang:null};
       if(lin!=null&&carPerfState.base.lin==null)carPerfState.base.lin=lin;
       if(ang!=null&&carPerfState.base.ang==null)carPerfState.base.ang=ang;
-      if(carPerfState.base.lin!=null)
-        b.setDamping(carPerfState.base.lin/Math.max(0.25,p.top),carPerfState.base.ang!=null?carPerfState.base.ang:0.1);
+      if(carPerfState.base.lin!=null){
+        /* fold stability into angular damping (cap so it never freezes turning) */
+        const stab=Math.min(3,Math.max(0.5,p.stability||1));
+        b.setDamping(carPerfState.base.lin/Math.max(0.25,p.top),
+          Math.min(2.0,(carPerfState.base.ang!=null?carPerfState.base.ang:0.1)*stab));
+      }
     }
   }catch(e){}
   carPerfState.ok=ok;
@@ -1785,7 +1940,7 @@ let ghostRosterEntries={};
 /* ---------------- garage / shop ----------------
    Students earn points for correct answers and completed tracks, then spend
    them in the Garage. Car paints ACTUALLY recolor the car: the game stores
-   its colors in localStorage ("v1_car") as [base,stripe,frame,rims] hex
+   its colors in __LS ("v1_car") as [base,stripe,frame,rims] hex
    strings, which we write when a paint is bought (applies on next reload). */
 const SHOP_CATALOG=[
   {id:"paintRed",   name:"🔴 Red Paint Job",  desc:"Repaint your car red",cost:80,cat:"paint",colors:["#c0392b","#7b241c","#95a5a6","#17202a"]},
@@ -1823,7 +1978,12 @@ const SHOP_CATALOG=[
     {key:"engine",icon:"⚙️",name:"Engine Tune", eff:n=>`+${Math.round(n*12)}% real acceleration`,base:200},
     {key:"tires", icon:"🛞",name:"Grip Tires", eff:n=>`+${Math.round(n*10)}% tire grip — better cornering`,base:150},
     {key:"aero",  icon:"💨",name:"Aero Kit",   eff:n=>`+${Math.round(n*8)}% top speed — less drag`,base:150},
-    {key:"brakes",icon:"🛑",name:"Brake Discs",eff:n=>`+${Math.round(n*10)}% braking force — stop on a dime`,base:120}
+    {key:"brakes",icon:"🛑",name:"Brake Discs",eff:n=>`+${Math.round(n*10)}% braking force — stop on a dime`,base:120},
+    /* NEW — expanded categories (transmission, weight, suspension, steering). */
+    {key:"trans", icon:"🔧",name:"Transmission",eff:n=>`+${Math.round(n*8)}% gearing — faster launch out of corners`,base:180},
+    {key:"weight",icon:"🪶",name:"Weight Reduction",eff:n=>`-${Math.round(n*4)}% chassis mass — quicker everything`,base:220},
+    {key:"susp",  icon:"🛠️",name:"Suspension",eff:n=>`+${Math.round(n*10)}% suspension — flatter, more planted cornering`,base:170},
+    {key:"steer", icon:"🎯",name:"Steering Rack",eff:n=>`+${Math.round(n*10)}% steering speed — snappier turn-in`,base:160}
   ];
   cats.forEach(c=>{
     for(let n=1;n<=12;n++){
@@ -1873,6 +2033,142 @@ async function resetAllUpgrades(){
 function shopOpen(){return S().shopEnabled!==false;}
 /* Config number that respects an explicit 0 (teacher may set zero rewards). */
 function cfgNum(v,d){return (v!=null&&isFinite(v)&&!isNaN(v))?v:d;}
+/* ---------------- RUN ECONOMY ----------------
+   Students earn stackable runs by answering questions. Default 5 runs per
+   correct answer (teacher-configurable). Runs accumulate on the student doc
+   (`runBank`), carry over between sessions/weeks, and are spent as extra
+   race attempts on the current track when the per-track budget runs out.
+   There is no weekly cap on questions and no weekly reset of the bank. */
+function runsPerCorrect(){return Math.max(0,Math.min(1000,Math.round(cfgNum(S().runsPerCorrect,5))));}
+function runsEnabled(){return S().runsEnabled!==false;}    // teacher can turn off earning
+function runsCarryOver(){return S().runsCarryOver!==false;} // teacher can force weekly reset
+function myRunBank(){return Math.max(0,Math.round(((meData&&meData.runBank)||0)));}
+
+/* Unique, persisted attempt identity: `${classCode}:${trackIdx}:${questionIdx}:${submitMs}`.
+   The `submitMs` (Date.now() at submit) makes retries idempotent — the SAME
+   submission retries with the SAME key. New submissions get a NEW key. */
+let __runLastSubmitKey=null,__runLastSubmitMs=0;
+function runClaimKey(){
+  if(!(me&&me.role==="student"&&classCode))return null;
+  const now=Date.now();
+  if(__runLastSubmitKey&&(now-__runLastSubmitMs)<2000)return __runLastSubmitKey;
+  __runLastSubmitMs=now;
+  __runLastSubmitKey=`${classCode}:${curTrack}:${ci(current)}:${now}`;
+  return __runLastSubmitKey;
+}
+
+/* Award runs for a correct answer. ATOMIC + IDEMPOTENT:
+   - Uses a Firestore transaction.
+   - `runClaims` (bounded ring of 500 recent keys) prevents double-granting.
+   - Returns `{awarded, amount, balance}` so the UI shows the REAL result. */
+async function awardRunsForAnswer(instanceKey){
+  if(!studentRef||!runsEnabled())return {awarded:false,amount:0,balance:myRunBank()};
+  const amt=runsPerCorrect();
+  if(amt<=0||!instanceKey)return {awarded:false,amount:0,balance:myRunBank()};
+  let out={awarded:false,amount:0,balance:myRunBank()};
+  try{
+    await db.runTransaction(async tx=>{
+      const snap=await tx.get(studentRef);
+      if(!snap.exists)return;
+      const d=snap.data()||{};
+      const claimed=new Set((d.runClaims)||[]);
+      const curBank=Math.max(0,Math.round(d.runBank||0));
+      if(claimed.has(instanceKey)){out={awarded:false,amount:0,balance:curBank};return;}
+      const nextClaims=[...claimed,instanceKey];
+      if(nextClaims.length>500)nextClaims.splice(0,nextClaims.length-500);   // bounded ring
+      await tx.update(studentRef,{
+        runBank:firebase.firestore.FieldValue.increment(amt),
+        runClaims:nextClaims
+      });
+      out={awarded:true,amount:amt,balance:curBank+amt};
+    });
+    if(out.awarded)
+      toast(`🏁 +${out.amount} run${out.amount>1?"s":""} earned! Bank: ${out.balance}`);
+    return out;
+  }catch(e){
+    /* If the write failed, REVOKE the claim key so a retry can earn it. */
+    __runLastSubmitKey=null;
+    toast("⚠️ Could not save your runs — answer saved, retry earning later.");
+    return out;
+  }
+}
+
+/* Spend 1 run from the bank + count the attempt, ATOMICALLY. Returns
+   `{granted, balance, attempts, bonusAttempts}`. Called when the per-track
+   attempt budget is exhausted and the bank has funds. */
+async function spendRunFromBank(trackKey){
+  if(!studentRef)return {granted:false};
+  let out={granted:false};
+  try{
+    await db.runTransaction(async tx=>{
+      const snap=await tx.get(studentRef);
+      if(!snap.exists)return;
+      const d=snap.data()||{};
+      const bank=Math.max(0,Math.round(d.runBank||0));
+      const tracks=d.tracks||{};
+      const ts=tracks[trackKey]||{};
+      const attempts=Math.max(0,Math.round(ts.attempts||0));
+      const bonus=Math.max(0,Math.round(ts.bonusAttempts||0));
+      const base=Math.max(1,Math.round(cfgNum(classData&&classData.settings&&classData.settings.attemptsPerTrack,5)));
+      const lim=base+bonus;
+      if(attempts>=lim&&bank<1){out={granted:false,balance:bank,attempts,bonusAttempts:bonus};return;}
+      await tx.update(studentRef,{
+        runBank:firebase.firestore.FieldValue.increment(-1),
+        [`tracks.${trackKey}.attempts`]:firebase.firestore.FieldValue.increment(1),
+        [`tracks.${trackKey}.bonusAttempts`]:firebase.firestore.FieldValue.increment(1)
+      });
+      out={granted:true,balance:bank-1,attempts:attempts+1,bonusAttempts:bonus+1};
+    });
+    return out;
+  }catch(e){return out;}
+}
+
+/* Teacher turned OFF carryover: expire the bank at the WEEK boundary (once
+   per ISO-week), NOT on every snapshot. Uses a persisted `runBankWeek` marker. */
+function maybeResetRunBankIfNoCarryover(){
+  if(!studentRef)return;
+  try{
+    if(runsCarryOver())return;
+    if(!meData)return;
+    const bank=Math.max(0,Math.round(meData.runBank||0));
+    if(bank<=0)return;
+    // ISO week key: "2026-W43"
+    const d=new Date();
+    const jan4=new Date(d.getFullYear(),0,4);
+    const dayOfYear=Math.floor((d-jan4)/86400000);
+    const weekNum=Math.ceil(((dayOfYear+jan4.getDay()+1)/7));
+    const weekKey=`${d.getFullYear()}-W${String(weekNum).padStart(2,"0")}`;
+    const lastWeek=meData.runBankWeek;
+    if(lastWeek===weekKey)return;   // already expired for this week
+    studentRef.update({runBank:0,runBankWeek:weekKey}).then(()=>{
+      toast("🏁 Run bank reset (teacher turned off carryover — weekly).");
+    }).catch(()=>{});
+  }catch(e){}
+}
+
+/* If the teacher has turned OFF advanced physics tuning, just IGNORE the
+   saved physTune (do NOT delete it — it's the student's setup, and the
+   setting might be turned back on). */
+function enforcePhysTuneOnLoad(){
+  try{
+    if(!meData)return;
+    if(physTuneAllowed())return;
+    if(meData.physTune&&Object.keys(meData.physTune).length)
+      meData.physTuneIgnored=true;   // mark ignored, do NOT clear
+  }catch(e){}
+}
+function maybeResetRunBankIfNoCarryover(){
+  if(!studentRef)return;
+  try{
+    if(runsCarryOver())return;
+    if(!meData)return;
+    const bank=Math.max(0,Math.round(meData.runBank||0));
+    if(bank>0){
+      studentRef.update({runBank:0}).catch(()=>{});
+      toast("🏁 Run bank reset (teacher turned off carryover).");
+    }
+  }catch(e){}
+}
 function categoryAllowed(cat){
   const s=S();
   if(cat==="paint")return s.allowPaints!==false;
@@ -1889,22 +2185,22 @@ function awardPoints(n){
 }
 function applyCarColors(colors){
   if(!Array.isArray(colors)||colors.length<4)return;
-  try{localStorage.setItem("v1_car",JSON.stringify(colors.map(String)));}catch(e){}
+  try{__LS.setItem("v1_car",JSON.stringify(colors.map(String)));}catch(e){}
 }
 /* Apply the paint LIVE, without reloading the page: the game bridge pushes
    the colors into the game's own customizer (so every future run/restart uses
    them) AND recolors the car on the track right now. Falls back to just
-   persisting to localStorage (applies on the next reload). */
+   persisting to __LS (applies on the next reload). */
 function applyPaintsNow(colors){
   if(!Array.isArray(colors)||colors.length<4)return false;
-  try{localStorage.setItem("v1_car",JSON.stringify(colors.map(String)));}catch(e){}
+  try{__LS.setItem("v1_car",JSON.stringify(colors.map(String)));}catch(e){}
   return ptcApplyColors(String(colors[0]),String(colors[1]),String(colors[2]),String(colors[3]));
 }
 /* No saved paint for THIS class -> the game's own default look. The bridge
    captured the game's factory colors at startup (when no paint was saved);
    resetting now also restores them live — no reload needed. */
 function resetCarColors(){
-  try{localStorage.removeItem("v1_car");}catch(e){}
+  try{__LS.removeItem("v1_car");}catch(e){}
   try{
     const d=(window.__PTC&&window.__PTC_DEFAULT_COLORS)||null;
     if(d&&d.length>=4)ptcApplyColors(String(d[0]),String(d[1]),String(d[2]),String(d[3]));
@@ -1926,10 +2222,10 @@ function myConsumables(){return (meData&&meData.consumables)||{};}
    class settings + the student's class doc always decide the car there, so
    importing can't be used to cheat a class. */
 function soloCar(){
-  try{return JSON.parse(localStorage.getItem("ptc-solo-car")||"null");}catch(e){return null;}
+  try{return JSON.parse(__LS.getItem("ptc-solo-car")||"null");}catch(e){return null;}
 }
 function saveSoloCar(c){
-  try{localStorage.setItem("ptc-solo-car",JSON.stringify(c));}catch(e){}
+  try{__LS.setItem("ptc-solo-car",JSON.stringify(c));}catch(e){}
 }
 function myTune(){
   if(soloMode){const sc=soloCar();return (sc&&sc.perfTune)||{};}
@@ -1946,7 +2242,7 @@ function carBaseMults(){
   return S();
 }
 function buildCarExport(){
-  const paint=(()=>{try{return JSON.parse(localStorage.getItem("v1_car")||"null");}catch(e){return null;}})();
+  const paint=(()=>{try{return JSON.parse(__LS.getItem("v1_car")||"null");}catch(e){return null;}})();
   const up=(soloMode?((soloCar()||{}).upgrades):myUpgrades())||[];
   const tune=myTune();
   /* Class cars also pack the teacher's base multipliers so the car drives
@@ -2078,13 +2374,13 @@ function toast(msg){$("toast").textContent=msg;$("toast").style.display="block";
 function shuffle(a){for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 function ci(q){return typeof q.answer==="number"?q.answer:q.choices.findIndex(x=>String(x).toLowerCase()===String(q.answer).toLowerCase());}
 function view(id){["loginView","lobbyView","quizView","resultsView","teacherView","shopView","replayView"].forEach(x=>$(x).classList.toggle("hidden",x!==id));}
-/* Some embeds run this page in a sandboxed frame where localStorage throws
+/* Some embeds run this page in a sandboxed frame where __LS throws
    a SecurityError. Fall back to in-memory storage so joining still works
    (the session just won't survive a page reload there). */
 const sessionStore=(()=>{let mem=null;return{
-  get(){try{return localStorage.getItem("ptc-student");}catch(e){return mem;}},
-  set(v){mem=v;try{localStorage.setItem("ptc-student",v);}catch(e){}},
-  del(){mem=null;try{localStorage.removeItem("ptc-student");}catch(e){}}
+  get(){try{return __LS.getItem("ptc-student");}catch(e){return mem;}},
+  set(v){mem=v;try{__LS.setItem("ptc-student",v);}catch(e){}},
+  del(){mem=null;try{__LS.removeItem("ptc-student");}catch(e){}}
 };})();
 function S(){return (classData&&classData.settings)||{};}
 function fmtTime(ms){const s=Math.floor(ms/1000);return `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;}
@@ -2140,7 +2436,7 @@ function validateBank(data){
           + b64url(binary parts)
    Binary = repeated [2B part-type id LE][4B count LE][count x 10B]:
      3B x+2^23 | 3B y | 3B z+2^23 | 1B rotation(0-3).
-   The game stores a custom track in localStorage as "v1_track_<name>"
+   The game stores a custom track in __LS as "v1_track_<name>"
    with the RAW save-string (the code minus its v1n header and name). */
 const PT_PART_IDS=new Set([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51]);
 function ptB64uDecode(str){
@@ -2248,15 +2544,15 @@ $("soloClearCarBtn").onclick=()=>{
 /* ---------------- 🌋 solo lava toggle ---------------- */
 $("soloLavaBtn").onclick=()=>{
   const on=!window.__PTC_LAVA;
-  try{localStorage.setItem("ptc_lava",on?"1":"0");}catch(e){}
+  try{__LS.setItem("ptc_lava",on?"1":"0");}catch(e){}
   toast(on?"🌋 Lava mode ON — walls are gone; touch the grass and you reset. Reloading…":"Lava mode off — reloading…");
   setTimeout(()=>location.reload(),900);
 };
 /* ---------------- 👤 ghost target: classmates vs own best run ---------------- */
 let ghostTarget="class";
-try{ghostTarget=localStorage.getItem("ptc_ghostTarget")==="own"?"own":"class";}catch(e){}
+try{ghostTarget=__LS.getItem("ptc_ghostTarget")==="own"?"own":"class";}catch(e){}
 function applyGhostTarget(){
-  try{localStorage.setItem("ptc_ghostTarget",ghostTarget);}catch(e){}
+  try{__LS.setItem("ptc_ghostTarget",ghostTarget);}catch(e){}
   clearRacePick();
   if(ghostTarget==="own"&&classCode&&me&&me.role==="student"&&me.name)
     pickRace(ghostTrackKey()+"__"+studentKey(me.name),me.name);
@@ -2386,7 +2682,7 @@ $("joinBtn").onclick=async()=>{
       const fresh=await ref.get();
       const want=Array.isArray(fresh.data().carColors)?fresh.data().carColors.map(String):null;
       let cur=null;
-      try{cur=JSON.parse(localStorage.getItem("v1_car")||"null");}catch(e){}
+      try{cur=JSON.parse(__LS.getItem("v1_car")||"null");}catch(e){}
       if(JSON.stringify(cur)!==JSON.stringify(want)){
         if(want&&applyPaintsNow(want)){
           toast("Car style restored for this class — recolored live, no reload!");
@@ -2520,7 +2816,11 @@ $("createClassBtn").onclick=async()=>{
         shopEnabled:true,pointsPerCorrect:10,pointsPerTrackComplete:50,shopCostMultiplier:1,
         allowPaints:true,allowPerformance:true,allowConsumables:true,allowCosmetics:true,
         startingPoints:0,unlockAccuracy:0,requireFinish:true,allowSkip:false,skipQuestions:5,
-        shadowMode:"off",trackMode:"normal",carAccelMult:1,carTopSpeedMult:1,carGripMult:1},
+        shadowMode:"off",trackMode:"normal",carAccelMult:1,carTopSpeedMult:1,carGripMult:1,carBrakeMult:1,
+        /* Run economy: 5 runs per correct answer, earning ON, carryover ON. */
+        runsPerCorrect:5,runsEnabled:true,runsCarryOver:true,
+        /* Advanced physics tuning: allowed, default ranges. */
+        allowPhysTune:true,physRange:{}},
       trackAssignment:{},
       questionBank:[]
     });
@@ -2533,7 +2833,7 @@ $("createClassBtn").onclick=async()=>{
 /* ---------------- teacher game tracks ----------------
    The teacher can attach PolyTrack import codes to the class (dashboard →
    Advanced → Game tracks). Each one is written into the game's own
-   custom-track storage (localStorage "v1_track_<name>") so it shows up in
+   custom-track storage (__LS "v1_track_<name>") so it shows up in
    the game's Play → track list like any custom track. We only manage keys
    we own (tracked per class) — a student's own imported tracks are never
    touched, and removing a track in the dashboard removes it here too. */
@@ -2545,7 +2845,7 @@ function syncGameTracks(){
   const gts=(classData&&classData.gameTracks)||{};
   const manifestKey="ptc-gt-"+myClass;
   let manifest={};
-  try{manifest=JSON.parse(localStorage.getItem(manifestKey))||{};}catch(e){manifest={};}
+  try{manifest=JSON.parse(__LS.getItem(manifestKey))||{};}catch(e){manifest={};}
   const next={};   // track id -> storage key we own after this sync
   const titles=new Set();
   const fresh=[];  // newly appeared track names (toast once)
@@ -2553,7 +2853,7 @@ function syncGameTracks(){
     // 1) Removals FIRST: delete keys we owned for ids the teacher removed.
     Object.keys(manifest).forEach(id=>{
       if(!gts[id]&&manifest[id]&&manifest[id].key){
-        try{localStorage.removeItem(manifest[id].key);}catch(e){}
+        try{__LS.removeItem(manifest[id].key);}catch(e){}
       }
     });
     // 2) Adds/updates. A key is reusable only if it was OURS for THIS track id;
@@ -2566,18 +2866,18 @@ function syncGameTracks(){
       if(v.error){console.warn("[gameTracks] skipping "+(g.name||id)+": "+v.error);return;}
       let key=(manifest[id]&&manifest[id].key)||null;
       if(!key){
-        const busy=k=>localStorage.getItem(k)!=null||Object.values(next).some(m=>m.key===k);
+        const busy=k=>__LS.getItem(k)!=null||Object.values(next).some(m=>m.key===k);
         let shown=v.name,tryKey="v1_track_"+shown,n=2;
         while(busy(tryKey)&&n<60){shown=v.name+" ("+(n++)+")";tryKey="v1_track_"+shown;}
         if(busy(tryKey)){console.warn("[gameTracks] no free storage name for "+v.name+" — skipped.");return;}
         key=tryKey;
       }
-      localStorage.setItem(key,v.saveString);
+      __LS.setItem(key,v.saveString);
       if(!manifest[id])fresh.push(v.name);
       next[id]={key};
       titles.add(key.substring("v1_track_".length));
     });
-    localStorage.setItem(manifestKey,JSON.stringify(next));
+    __LS.setItem(manifestKey,JSON.stringify(next));
   }catch(e){
     if(!gameTracksStorageWarned){
       gameTracksStorageWarned=true;
@@ -2608,7 +2908,7 @@ function subscribeClass(){
     try{
       const wantLava=S().trackMode==="lava";
       if(wantLava!==!!window.__PTC_LAVA){
-        try{localStorage.setItem("ptc_lava",wantLava?"1":"0");}catch(e2){}
+        try{__LS.setItem("ptc_lava",wantLava?"1":"0");}catch(e2){}
         toast(wantLava?"🌋 LAVA MODE — walls removed, grass is deadly! Reloading…":"Lava mode off — reloading…");
         setTimeout(()=>location.reload(),900);
         return;
@@ -2656,6 +2956,9 @@ function subscribeClass(){
       else resetCarColors();
       const gb=$("garageBtn");if(gb)gb.textContent=`🛒 Garage (${meData.points||0} pts)`;
       const qp=$("quizPts");if(qp)qp.textContent=`${meData.points||0} pts`;
+      /* Teacher-restriction enforcement on every live update. */
+      enforcePhysTuneOnLoad();
+      maybeResetRunBankIfNoCarryover();
       if(!$("shopView").classList.contains("hidden"))renderShop();
       refreshUI();
     },()=>{});
@@ -2866,6 +3169,10 @@ function answer(n,bypass){
   if(studentRef&&isTracksMode())
     studentRef.update({[`tracks.${curTrack}.answeredTotal`]:firebase.firestore.FieldValue.increment(1)}).catch(()=>{});
   if(ok&&shopOpen())awardPoints(cfgNum(S().pointsPerCorrect,10)); // garage points
+  /* Stackable runs: award for genuinely-correct answers (Pit Crew forgiveness
+     and teacher bypass do NOT earn runs — only a real correct answer does). */
+  if(ok&&!pitCrew&&!bypass&&studentRef&&runsEnabled())
+    awardRunsForAnswer(runClaimKey());
   results.push({question:current.question,choices:[...current.choices],chosen:n,correct,ok,
     explanation:current.explanation||"",bypass:!!bypass,pitCrew});
   updateMinBtn();
@@ -3340,10 +3647,39 @@ function renderShop(){
      Each ladder's slider runs 0..owned (maxed ladders cover the full 0-12
      range). The applied level updates LIVE as the slider moves and is saved
      to the student doc (debounced). */
-  const tuneKeys=[["engine","⚙️ Engine"],["tires","🛞 Tires / handling"],["aero","💨 Aero"],["brakes","🛑 Brakes"]];
+  const tuneKeys=[["engine","⚙️ Engine"],["tires","🛞 Tires / handling"],["aero","💨 Aero"],["brakes","🛑 Brakes"],
+    ["trans","🔧 Transmission"],["weight","🪶 Weight Reduction"],["susp","🛠️ Suspension"],["steer","🎯 Steering Rack"]];
   const hasAnyPerf=tuneKeys.some(([k])=>upgradeLevel(k)>0)||upgradeLevel("turbo")>0||upgradeLevel("jump")>0;
+  /* ---- 🎛️ ADVANCED PHYSICS CUSTOMIZATION (teacher-gated) ----
+     Available to ALL students — it's independent of owning upgrades. */
+  html+=`<div class="eyebrow">🎛️ Advanced physics</div>`;
+  if(physTuneAllowed()){
+    html+=`<div class="card" style="margin:8px 0"><div class="small" style="margin:0 0 8px">Dial in the car's feel. Changes apply LIVE while you race — no reload. Saved to your account.</div>`;
+    html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">`;
+    PHYS_DEFS.forEach(d=>{
+      const v=physTuneGet(d.key);
+      // Use the TEACHER's effective range (if set) so the slider bounds match
+      const range=S().physRange||{};
+      const eMin=cfgNum(range[`${d.key}Min`],d.min);
+      const eMax=cfgNum(range[`${d.key}Max`],d.max);
+      html+=`<div><div class="small" style="margin-bottom:3px"><b>${d.label}</b><br>${d.desc}</div>
+      <div style="display:flex;align-items:center;gap:6px">
+      <input type="range" min="${eMin}" max="${eMax}" step="${d.step}" value="${v}" data-phys="${d.key}" style="flex:1">
+      <b class="small" id="physVal-${d.key}" style="min-width:48px">${d.fmt(v)}</b></div></div>`;
+    });
+    html+=`</div>`;
+    html+=`<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+      <button id="physPresetBalanced" data-preset="balanced">🎯 Balanced</button>
+      <button id="physPresetGrip" data-preset="grip">🛞 Grip</button>
+      <button id="physPresetDrift" data-preset="drift">🏁 Drift</button>
+      <button id="physResetBtn" data-reset="1">↩️ Reset</button>
+    </div></div>`;
+  } else {
+    html+=`<div class="card" style="margin:8px 0"><div class="small" style="margin:0">The teacher has turned off advanced physics tuning for this class.</div></div>`;
+  }
   if(hasAnyPerf){
     html+=`<div class="eyebrow">🎚️ Tune your upgrades</div>`;
+
     html+=`<div class="card" style="margin:8px 0"><div class="small" style="margin:0 0 8px">Own an upgrade? Dial its power from 0 to its max level — changes apply LIVE while you race. Once a ladder is MAXED the slider covers the full range, so you can set exactly the power you can control.</div>`;
     tuneKeys.forEach(([k,label])=>{
       const owned=upgradeLevel(k);
@@ -3393,6 +3729,70 @@ function renderShop(){
       },700);
     };
   });
+  /* Advanced physics sliders: read, clamp, apply live, save debounced. */
+  $$("#shopList [data-phys]").forEach(inp=>{
+    inp.oninput=()=>{
+      const k=inp.dataset.phys;
+      const d=PHYS_DEFS.find(x=>x.key===k);
+      if(!d)return;
+      let v=parseFloat(inp.value);
+      if(!isFinite(v))v=d.def;
+      // Clamp to teacher's range
+      const range=S().physRange||{};
+      const rMin=cfgNum(range[`${k}Min`],d.min);
+      const rMax=cfgNum(range[`${k}Max`],d.max);
+      v=Math.max(Math.min(rMax,v),Math.min(rMax,rMin));
+      // Update the value label
+      const lbl=$("physVal-"+k);
+      if(lbl)lbl.textContent=d.fmt(v);
+      // Apply locally + debounce save
+      if(!meData)meData={};
+      if(!meData.physTune)meData.physTune={};
+      meData.physTune[k]=v;
+      clearTimeout(inp.__ptcPT);
+      inp.__ptcPT=setTimeout(()=>{
+        if(studentRef&&physTuneAllowed()){
+          if(meData)delete meData.physTuneIgnored;
+          studentRef.update({[`physTune.${k}`]:v}).catch(()=>{});
+        }
+      },500);
+    };
+  });
+  /* Presets + reset for advanced physics. */
+  $$("#shopList [data-preset]").forEach(btn=>{
+    btn.onclick=()=>{
+      const which=btn.dataset.preset;
+      const PRESETS={
+        balanced:{mass:1,weightDist:1,downforce:1,suspStiff:1,suspDamp:1,steerSpeed:1,stability:1,driftKeep:0.5,airG:1.6},
+        grip:{mass:1.15,weightDist:1.1,downforce:2.2,suspStiff:1.25,suspDamp:1.3,steerSpeed:0.9,stability:2.2,driftKeep:0.15,airG:1.8},
+        drift:{mass:0.85,weightDist:1.35,downforce:0.7,suspStiff:0.85,suspDamp:0.8,steerSpeed:1.5,stability:0.6,driftKeep:0.85,airG:1.4}
+      };
+      const vals={...(PRESETS[which]||PRESETS.balanced)};
+      /* Validate each preset value against the teacher's range. */
+      if(!meData)meData={};
+      PHYS_DEFS.forEach(d=>{
+        if(vals[d.key]!=null){
+          const range=S().physRange||{};
+          const eMin=cfgNum(range[`${d.key}Min`],d.min);
+          const eMax=cfgNum(range[`${d.key}Max`],d.max);
+          vals[d.key]=Math.max(Math.min(eMax,vals[d.key]),Math.min(eMax,eMin));
+        }
+      });
+      meData.physTune={...(meData.physTune||{}),...vals};
+      if(meData)delete meData.physTuneIgnored;
+      if(studentRef&&physTuneAllowed())studentRef.update({physTune:meData.physTune}).catch(()=>{});
+      toast(`🎛️ ${which} preset applied — LIVE!`);
+      renderShop();
+    };
+  });
+  const physReset=$("physResetBtn");
+  if(physReset)physReset.onclick=()=>{
+    if(!meData)meData={};
+    meData.physTune={};
+    if(studentRef)studentRef.update({physTune:{}}).catch(()=>{});
+    toast("🎛️ Physics reset to default.");
+    renderShop();
+  };
   const resetBtn=$("resetPerfBtn");
   if(resetBtn){
     let armed=false;
@@ -3838,7 +4238,7 @@ function startGhostRec(){
   try{ghostRec.engineTrackId=ptcTrackId();}catch(e){ghostRec.engineTrackId=null;}
   /* The car's paint at run start — the classmate's physical ghost wears the
      same colors the student raced with. */
-  try{ghostRec.carColors=JSON.parse(localStorage.getItem("v1_car")||"null");}catch(e){ghostRec.carColors=null;}
+  try{ghostRec.carColors=JSON.parse(__LS.getItem("v1_car")||"null");}catch(e){ghostRec.carColors=null;}
   shadowRadar={bounds:null,cursor:0,nearest:0};   // every run replays the ghost from its start
 }
 /* Samples are a FLAT number array (Firestore has no nested arrays):
@@ -3884,29 +4284,38 @@ function updateRaceHud(){
       const used=(curTrackState().attempts)||0;
       const left=Math.max(0,lim-used);
       html+=left>0?`🏁 <b>Attempts left:</b> ${left}<br>`:`🏁 <b class="dim">No attempts left</b><br>`;
-    }
-    /* Ability readiness: class students AND solo practice (imported cars
-       can carry turbo/jump). */
-    if(soloMode||((me&&me.role==="student")&&isRacingAllowed())){
-      const p=carPerf();
-      if(p.turbo>1){
-        show=true;
-        if(BOOST.jetRun!==RACE.runId)jetRefill();
-        const pct=BOOST.jetMax>0?Math.max(0,Math.min(100,Math.round(BOOST.jetFuel/BOOST.jetMax*100))):0;
-        if(turboActive())html+=`🚀 <b class="good">JET BOOSTING</b><br>`;
-        else if(pct<=0)html+=`🚀 <span class="dim">Jet fuel spent — refills next round</span><br>`;
-        else html+=`🚀 <b>Jet ready</b> — hold SHIFT<br>`;
-        html+=`<div style="background:#ffffff22;border-radius:4px;height:6px;margin:2px 0 4px;overflow:hidden"><div style="background:var(--accent2);height:6px;border-radius:4px;width:${pct}%"></div></div>`;
-      }
-      if(p.jump>0){
-        show=true;
-        const cd=BOOST.jumpNextAt-performance.now();
-        html+=cd>0?`🚀 <span class="dim">Jump recharging…</span><br>`
-          :(p.jump>=5?`🚀 <b>Jump ready</b> — SPACE (again in air: double jump!)<br>`:`🚀 <b>Jump ready</b> — press SPACE<br>`);
-      }
+      if(runsEnabled())
+        html+=`🏦 <b>Run bank:</b> ${myRunBank()}${runsCarryOver()?"":" (resets weekly)"}<br>`;
     }
     hud.innerHTML=html;
     hud.classList.toggle("show",show);
+  }catch(e){}
+  /* ---------------- bottom-left power HUD (jet/jump readiness) ----------------
+     Moved here from the top-left so the attempt counter stays clear. */
+  try{
+    const phud=$("powerHud");
+    if(!phud)return;
+    let pshow=false,phtml="";
+    if(soloMode||((me&&me.role==="student")&&isRacingAllowed())){
+      const p=carPerf();
+      if(p.turbo>1){
+        pshow=true;
+        if(BOOST.jetRun!==RACE.runId)jetRefill();
+        const pct=BOOST.jetMax>0?Math.max(0,Math.min(100,Math.round(BOOST.jetFuel/BOOST.jetMax*100))):0;
+        if(turboActive())phtml+=`🚀 <b class="good">JET BOOSTING</b><br>`;
+        else if(pct<=0)phtml+=`🚀 <span class="dim">Jet fuel spent — refills next round</span><br>`;
+        else phtml+=`🚀 <b>Jet ready</b> — hold SHIFT<br>`;
+        phtml+=`<div style="background:#ffffff22;border-radius:4px;height:6px;margin:2px 0 4px;overflow:hidden"><div style="background:var(--accent2);height:6px;border-radius:4px;width:${pct}%"></div></div>`;
+      }
+      if(p.jump>0){
+        pshow=true;
+        const cd=BOOST.jumpNextAt-performance.now();
+        phtml+=cd>0?`🚀 <span class="dim">Jump recharging…</span><br>`
+          :(p.jump>=5?`🚀 <b>Jump ready</b> — SPACE (again in air: double jump!)<br>`:`🚀 <b>Jump ready</b> — press SPACE<br>`);
+      }
+    }
+    phud.innerHTML=phtml;
+    phud.classList.toggle("show",pshow);
   }catch(e){}
 }
 setInterval(updateRaceHud,500);
@@ -4024,6 +4433,15 @@ async function countAttemptStart(){
     if(!ts.unlocked){refreshUI();return false;}   // track locked — no new runs
     const lim=attemptsLimit()+((ts.bonusAttempts)||0);
     if((ts.attempts||0)>=lim){                    // budget used up — lock NOW
+      /* RUN BANK: before locking, try to spend a banked run so students who
+         answered extra questions can keep racing without hitting the wall.
+         The spend + attempt-count is ATOMIC (single transaction). */
+      const res=await spendRunFromBank(k);
+      if(res&&res.granted){
+        refreshUI();
+        toast(`🏁 Run used from your bank! Bank: ${res.balance} left.`);
+        return true;
+      }
       await lockTrackNow(d.track||curTrack);
       refreshUI();
       return false;
@@ -4185,10 +4603,10 @@ document.addEventListener("pointerdown",e=>{
 let ptcKnownTrackIds={};    // standard track number -> engine fingerprint
 let ptcCustomTrackIds={};   // engine fingerprints seen on custom/teacher tracks
 try{
-  const d=JSON.parse(localStorage.getItem("ptc-trackids")||"null");
+  const d=JSON.parse(__LS.getItem("ptc-trackids")||"null");
   if(d){ptcKnownTrackIds=d.std||{};ptcCustomTrackIds=d.custom||{};}
 }catch(e){}
-function ptcSaveTrackIds(){try{localStorage.setItem("ptc-trackids",JSON.stringify({std:ptcKnownTrackIds,custom:ptcCustomTrackIds}));}catch(e){}}
+function ptcSaveTrackIds(){try{__LS.setItem("ptc-trackids",JSON.stringify({std:ptcKnownTrackIds,custom:ptcCustomTrackIds}));}catch(e){}}
 /* Learn the engine fingerprint of the track being played: when the student
    legitimately selects a track (menu click that passed the class checks),
    remember which fingerprint belongs to that class track. */
@@ -4752,4 +5170,444 @@ refreshUI();
 })();
 </script>
 
-</body></html>
+<script data-pplx-inline-edit>
+(function () {
+  if (window === window.top) return;
+
+  const allowedParentOrigins = ["https://www.perplexity.ai","https://perplexity.ai","https://testing.perplexity.ai","https://staging.perplexity.ai","https://*.preview.i.perplexity.ai","http://perplexity.localhost","http://localhost:1420","http://127.0.0.1:1420","http://localhost:3000","http://127.0.0.1:3000","http://localhost:5173","http://127.0.0.1:5173"];
+  const MAX_FONT_BYTES = 500 * 1024;
+  const MAX_TOTAL_FONT_BYTES = 2 * 1024 * 1024;
+  const DEFAULT_LINE_HEIGHT = 16;
+  let scrollForwarding = false;
+  let scrollRaf = 0;
+  let trustedTopOrigin = null;
+
+  // Allow entries like "https://*.preview.i.perplexity.ai" — the wildcard
+  // matches a single DNS label (no dots), so "https://*.foo" cannot stretch
+  // across multiple labels.
+  function matchesAllowedOrigin(origin) {
+    if (!origin) return false;
+    for (const entry of allowedParentOrigins) {
+      if (!entry.includes("*")) {
+        if (entry === origin) return true;
+        continue;
+      }
+      const pattern = new RegExp(
+        "^" +
+          entry.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^.]+") +
+          "$",
+      );
+      if (pattern.test(origin)) return true;
+    }
+    return false;
+  }
+
+  // Trust decision: when the sender is same-origin-visible (event.origin is a
+  // real origin like https://www.perplexity.ai) we trust event.origin directly.
+  // When event.origin is "null" (opaque broker srcdoc), we fall back to the
+  // broker's stamped `parentOrigin` to identify the top window. The fallback
+  // is claim-only — we rely on the browser's native `targetOrigin` enforcement
+  // on the response path (see postToTrustedTop) to ensure replies can't be
+  // delivered to anyone but the actual top window of that claimed origin.
+  function getTrustedParentOrigin(event) {
+    const forwardedParentOrigin =
+      typeof event.data.parentOrigin === "string" ? event.data.parentOrigin : null;
+    const parentOrigin = event.origin === "null" ? forwardedParentOrigin : event.origin;
+    return matchesAllowedOrigin(parentOrigin) ? parentOrigin : null;
+  }
+
+  // All responses go to window.top with targetOrigin = the allowlisted origin.
+  // An attacker that iframes us inside their own null-origin broker can claim
+  // any parentOrigin they like, but the browser will drop the reply whenever
+  // the real top's origin doesn't match — so the screenshot never leaves.
+  function postToTrustedTop(message) {
+    if (!trustedTopOrigin) return;
+    try {
+      window.top.postMessage(message, trustedTopOrigin);
+    } catch (_error) {}
+  }
+
+  const PICK_CAPABILITIES = ["pick"];
+  const PICK_CHAIN_LENGTH = 4;
+  const PICK_MAX_TEXT_CHARS = 120;
+  const PICK_MAX_HTML_CHARS = 300;
+
+  function truncate(value, maxChars) {
+    return value.length > maxChars ? value.slice(0, maxChars - 1) + "…" : value;
+  }
+
+  function isPickableElement(element) {
+    return (
+      element instanceof Element &&
+      element !== document.documentElement &&
+      element !== document.body
+    );
+  }
+
+  function resolvePickTarget(x, y) {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    const element = document.elementFromPoint(x, y);
+    return isPickableElement(element) ? element.closest("svg") || element : null;
+  }
+
+  function pickLabel(element) {
+    if (element.id) return element.localName + "#" + element.id;
+    return [element.localName].concat(Array.from(element.classList).slice(0, 2)).join(".");
+  }
+
+  // Only attributes that help find the element in source. data-* values and URL
+  // query strings or fragments can carry tokens.
+  const PICK_ATTRIBUTES = new Set([
+    "id",
+    "class",
+    "name",
+    "type",
+    "role",
+    "alt",
+    "aria-label",
+    "href",
+    "src",
+  ]);
+
+  function pickAttributeValue(attribute) {
+    return attribute.name === "href" || attribute.name === "src"
+      ? attribute.value.split(/[?#]/)[0]
+      : attribute.value;
+  }
+
+  function describePickElement(element) {
+    const chain = [];
+    for (
+      let current = element;
+      isPickableElement(current) && chain.length < PICK_CHAIN_LENGTH;
+      current = current.parentElement
+    ) {
+      chain.unshift(current);
+    }
+    const attributes = Array.from(element.attributes)
+      .filter((attribute) => PICK_ATTRIBUTES.has(attribute.name))
+      .map((attribute) => ` ${attribute.name}="${pickAttributeValue(attribute).replace(/"/g, "&quot;")}"`)
+      .join("");
+    const text = (element.innerText || element.textContent || "").replace(/\s+/g, " ").trim();
+    return {
+      chain: chain.map(pickLabel),
+      html: truncate(`<${element.localName}${attributes}>`, PICK_MAX_HTML_CHARS),
+      text: text ? truncate(text, PICK_MAX_TEXT_CHARS) : undefined,
+    };
+  }
+
+  // Hover asks once per frame, and innerText on a large section forces layout,
+  // so only the rect is re-read while the pointer stays on the same element.
+  // Clicks ask for fresh details since the page may have changed the element.
+  let lastPick = null;
+
+  function describePickTarget(element, fresh) {
+    if (fresh || lastPick?.element !== element) {
+      lastPick = { element, details: describePickElement(element) };
+    }
+    const rect = element.getBoundingClientRect();
+    return {
+      rect: { x: rect.left, y: rect.top, width: rect.width, height: rect.height },
+      ...lastPick.details,
+    };
+  }
+
+  function inlineAll(original, clone) {
+    if (original.nodeType !== 1 || clone.nodeType !== 1) return;
+
+    try {
+      const computedStyle = getComputedStyle(original);
+      // cssText on a computed style is the serialized declaration in modern
+      // Chromium/Safari — a single read beats enumerating ~400 longhand
+      // properties. Firefox returns "" here, so we fall back on empty.
+      const serialized = computedStyle.cssText;
+      if (serialized) {
+        clone.style.cssText = serialized;
+      } else {
+        const parts = new Array(computedStyle.length);
+        for (let index = 0; index < computedStyle.length; index += 1) {
+          const property = computedStyle[index];
+          parts[index] = `${property}:${computedStyle.getPropertyValue(property)};`;
+        }
+        clone.style.cssText = parts.join("");
+      }
+    } catch (_error) {}
+
+    const originalChildren = original.children;
+    const clonedChildren = clone.children;
+    for (
+      let index = 0;
+      index < originalChildren.length && index < clonedChildren.length;
+      index += 1
+    ) {
+      inlineAll(originalChildren[index], clonedChildren[index]);
+    }
+  }
+
+  function extractFontUrl(srcValue) {
+    const matches = [
+      ...srcValue.matchAll(
+        /url\(["']?([^"')]+)["']?\)(?:\s*format\(["']?([^"')]+)["']?\))?/gi,
+      ),
+    ];
+    if (matches.length === 0) return null;
+    const woff2 = matches.find((m) => m[2] && m[2].toLowerCase().includes("woff2"));
+    if (woff2) return woff2[1];
+    const woff = matches.find((m) => m[2] && m[2].toLowerCase().includes("woff"));
+    if (woff) return woff[1];
+    return matches[0][1];
+  }
+
+  // Cache resolved font URL -> data URI across captures. Fonts on a page
+  // essentially never change, and a batch run emits multiple captures back to
+  // back — without this we'd refetch + re-base64 every time.
+  const fontDataUriCache = new Map();
+  const SRC_DECLARATION_RE = /src\s*:\s*[^;}]+/i;
+
+  async function fetchAsDataUri(url) {
+    if (fontDataUriCache.has(url)) return fontDataUriCache.get(url);
+    let dataUri = null;
+    try {
+      const response = await fetch(url, { mode: "cors", credentials: "omit" });
+      if (response.ok) {
+        const blob = await response.blob();
+        if (blob.size <= MAX_FONT_BYTES) {
+          dataUri = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () =>
+              resolve(typeof reader.result === "string" ? reader.result : null);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(blob);
+          });
+        }
+      }
+    } catch (_error) {
+      dataUri = null;
+    }
+    fontDataUriCache.set(url, dataUri);
+    return dataUri;
+  }
+
+  function collectFontFaceRuleTexts() {
+    const rules = [];
+    for (const sheet of document.styleSheets) {
+      let cssRules;
+      try {
+        cssRules = sheet.cssRules;
+      } catch (_error) {
+        continue;
+      }
+      if (!cssRules) continue;
+      for (const rule of cssRules) {
+        const cssText = rule.cssText || "";
+        if (cssText.startsWith("@font-face")) rules.push(cssText);
+      }
+    }
+    return rules;
+  }
+
+  async function buildInlinedFontCss() {
+    const ruleTexts = collectFontFaceRuleTexts();
+    if (ruleTexts.length === 0) return null;
+
+    const resolved = ruleTexts.map((cssText) => {
+      if (!SRC_DECLARATION_RE.test(cssText)) return null;
+      const srcMatch = cssText.match(/src\s*:\s*([^;}]+)[;}]/i);
+      if (!srcMatch) return null;
+      const url = extractFontUrl(srcMatch[1]);
+      if (!url) return null;
+      try {
+        return { cssText, url: new URL(url, document.baseURI).href };
+      } catch (_error) {
+        return null;
+      }
+    });
+
+    const dataUris = await Promise.all(
+      resolved.map((entry) => (entry ? fetchAsDataUri(entry.url) : Promise.resolve(null))),
+    );
+
+    const inlined = [];
+    let totalBytes = 0;
+    for (let index = 0; index < resolved.length; index += 1) {
+      const entry = resolved[index];
+      const dataUri = dataUris[index];
+      if (!entry || !dataUri) continue;
+      const approxBytes = dataUri.length * 0.75;
+      if (totalBytes + approxBytes > MAX_TOTAL_FONT_BYTES) break;
+      totalBytes += approxBytes;
+      inlined.push(entry.cssText.replace(SRC_DECLARATION_RE, `src: url("${dataUri}")`));
+    }
+    return inlined.length > 0 ? inlined.join("\n") : null;
+  }
+
+  function stripExternal(clone) {
+    const images = clone.querySelectorAll("img");
+    for (let index = 0; index < images.length; index += 1) {
+      const src = images[index].getAttribute("src");
+      if (src && !src.startsWith("data:")) images[index].removeAttribute("src");
+    }
+
+    const elements = clone.querySelectorAll("*");
+    for (let index = 0; index < elements.length; index += 1) {
+      const style = elements[index].style.cssText;
+      if (style && style.includes("url(")) {
+        elements[index].style.cssText = style.replace(
+          /url\(["']?(?!data:)[^)"']*["']?\)/gi,
+          "none",
+        );
+      }
+    }
+  }
+
+  function emitScroll() {
+    scrollRaf = 0;
+    if (!scrollForwarding) return;
+    postToTrustedTop({
+      type: "INLINE_EDIT_SCROLL",
+      scrollX: window.scrollX,
+      scrollY: window.scrollY,
+      capabilities: PICK_CAPABILITIES,
+    });
+  }
+
+  window.addEventListener(
+    "scroll",
+    function () {
+      if (!scrollForwarding || scrollRaf) return;
+      scrollRaf = requestAnimationFrame(emitScroll);
+    },
+    { passive: true, capture: true },
+  );
+
+  async function handleCaptureRequest(event) {
+    const requestId = event.data.requestId;
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    function postResult(dataUrl) {
+      postToTrustedTop({
+        type: "INLINE_EDIT_SCREENSHOT_RESULT",
+        requestId,
+        dataUrl,
+        scrollX,
+        scrollY,
+      });
+    }
+
+    try {
+      // Wait for any pending web fonts to resolve so both inline metrics and
+      // the @font-face inlining below see the same loaded faces.
+      if (document.fonts && document.fonts.ready) {
+        try {
+          await document.fonts.ready;
+        } catch (_error) {}
+      }
+
+      const clone = document.documentElement.cloneNode(true);
+      inlineAll(document.documentElement, clone);
+
+      const removedNodes = clone.querySelectorAll("script,link[rel=\"stylesheet\"],style");
+      for (let index = 0; index < removedNodes.length; index += 1) {
+        removedNodes[index].remove();
+      }
+
+      stripExternal(clone);
+
+      // Re-embed web fonts as data-URI @font-face rules so the SVG rasterizer
+      // can resolve them — external font URLs aren't fetched during
+      // foreignObject rendering, which would otherwise force a fallback face
+      // and change text metrics.
+      const inlinedFontCss = await buildInlinedFontCss();
+      if (inlinedFontCss) {
+        const styleEl = document.createElement("style");
+        styleEl.textContent = inlinedFontCss;
+        const head = clone.querySelector("head");
+        if (head) head.appendChild(styleEl);
+        else clone.insertBefore(styleEl, clone.firstChild);
+      }
+
+      const html = new XMLSerializer().serializeToString(clone);
+      const svg =
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
+        '<foreignObject width="100%" height="100%">' +
+        `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${width}px;height:${height}px;overflow:hidden">` +
+        `<div style="position:relative;left:-${scrollX}px;top:-${scrollY}px">` +
+        html +
+        "</div></div></foreignObject></svg>";
+      const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+      const image = new Image();
+      image.onload = function () {
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d").drawImage(image, 0, 0);
+        postResult(canvas.toDataURL("image/png"));
+      };
+      image.onerror = function () {
+        postResult(null);
+      };
+      image.src = svgUrl;
+    } catch (_error) {
+      postResult(null);
+    }
+  }
+
+  window.addEventListener("message", function (event) {
+    if (!event.data) return;
+    // Only accept messages from the direct parent frame. Blocks sibling /
+    // unrelated-window postMessage senders that could otherwise reach us.
+    if (event.source !== window.parent) return;
+
+    const trustedParentOrigin = getTrustedParentOrigin(event);
+    if (!trustedParentOrigin) return;
+    trustedTopOrigin = trustedParentOrigin;
+
+    if (event.data.type === "INLINE_EDIT_PICK") {
+      const element = resolvePickTarget(event.data.x, event.data.y);
+      postToTrustedTop({
+        type: "INLINE_EDIT_PICK_RESULT",
+        seq: event.data.seq,
+        target: element ? describePickTarget(element, event.data.fresh === true) : null,
+      });
+      return;
+    }
+
+    if (event.data.type === "INLINE_EDIT_SCROLL_START") {
+      scrollForwarding = true;
+      emitScroll();
+      return;
+    }
+
+    if (event.data.type === "INLINE_EDIT_SCROLL_STOP") {
+      scrollForwarding = false;
+      if (scrollRaf) cancelAnimationFrame(scrollRaf);
+      scrollRaf = 0;
+      return;
+    }
+
+    if (event.data.type === "INLINE_EDIT_SCROLL_BY") {
+      const { deltaX, deltaY, deltaMode } = event.data;
+      if (!scrollForwarding || !Number.isFinite(deltaX) || !Number.isFinite(deltaY)) return;
+      if (deltaMode !== 0 && deltaMode !== 1 && deltaMode !== 2) return;
+      const lineHeight =
+        parseFloat(getComputedStyle(document.documentElement).lineHeight) || DEFAULT_LINE_HEIGHT;
+      const scaleX = deltaMode === 1 ? lineHeight : deltaMode === 2 ? window.innerWidth : 1;
+      const scaleY = deltaMode === 1 ? lineHeight : deltaMode === 2 ? window.innerHeight : 1;
+      // The selection overlay receives the wheel event instead of this iframe.
+      // Instant scrolling preserves trackpad deltas even on smooth-scroll sites.
+      window.scrollBy({ left: deltaX * scaleX, top: deltaY * scaleY, behavior: "instant" });
+      emitScroll();
+      return;
+    }
+
+    if (event.data.type !== "INLINE_EDIT_CAPTURE_REQUEST") return;
+
+    handleCaptureRequest(event);
+  });
+})();
+
+
+</script></body></html>
