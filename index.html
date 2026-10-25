@@ -109,7 +109,7 @@ body.neon{--bg:#090b18;--panel:#11152b;--panel2:#1a2140;
 #app{left:50%!important;top:50%!important;right:auto!important;bottom:auto!important;transform:translate(-50%,-50%)!important;max-height:calc(100vh - 24px)!important;width:min(460px,calc(100vw - 24px))!important}
 
 /* While a question is on screen, cover the WHOLE screen so the track is hidden. */
-body.quiz-blocked #app{left:0!important;top:0!important;right:0!important;bottom:0!important;transform:none!important;width:100vw!important;height:100vh!important;max-height:none!important;border-radius:0;display:flex!important;flex-direction:column;align-items:center;overflow:auto;background:var(--bg);padding-top:70px;box-sizing:border-box}
+body.quiz-blocked #app{left:0!important;top:0!important;right:0!important;bottom:0!important;transform:none!important;width:100vw!important;height:100vh!important;max-height:none!important;border-radius:0;display:flex!important;flex-direction:column;align-items:center;overflow:auto;background:var(--bg);padding-top:var(--ptc-top-inset,70px);box-sizing:border-box}
 body.quiz-blocked .topbar{width:100%}
 body.quiz-blocked #app main{margin:auto;width:min(520px,92vw)}
 body.quiz-blocked .top-actions{display:none!important}
@@ -117,7 +117,7 @@ body.quiz-blocked .top-actions{display:none!important}
 
 /* Classroom lock: nobody can race until they've joined a class AND the
    teacher has turned Classroom mode on. Same full-screen takeover as a question. */
-body.race-locked #app{left:0!important;top:0!important;right:0!important;bottom:0!important;transform:none!important;width:100vw!important;height:100vh!important;max-height:none!important;border-radius:0;display:flex!important;flex-direction:column;align-items:center;overflow:auto;background:var(--bg);padding-top:70px;box-sizing:border-box}
+body.race-locked #app{left:0!important;top:0!important;right:0!important;bottom:0!important;transform:none!important;width:100vw!important;height:100vh!important;max-height:none!important;border-radius:0;display:flex!important;flex-direction:column;align-items:center;overflow:auto;background:var(--bg);padding-top:var(--ptc-top-inset,70px);box-sizing:border-box}
 body.race-locked .topbar{width:100%}
 body.race-locked #app main{margin:auto;width:min(480px,92vw)}
 /* Leave class stays reachable in the top-right even while locked */
@@ -136,16 +136,30 @@ font-size:12px;color:var(--text);max-width:210px;display:none}
 #shadowHud.show{display:block}
 #shadowHud canvas{display:block;margin:6px auto 2px;background:#0b1220;border-radius:8px}
 #shadowDelta{font-weight:700}
-/* Top-left in-race HUD: attempts left + ability readiness. */
-#raceHud{position:fixed;left:14px;top:14px;z-index:1000000;background:#0f172aee;
+/* SHARED TOP BAR: the ▶ Next-track button and the attempts HUD live in ONE
+   fixed grid header — flow layout can never overlap them at any width, and
+   the quiz/race-locked strip reserves the bar's ACTUAL measured height
+   (ResizeObserver → --ptc-top-inset, set by the button IIFE), not an
+   estimate. Narrow screens stack the two rows. */
+#ptcTopBar{position:fixed;top:0;left:0;right:0;z-index:99999;display:grid;
+grid-template-columns:auto 1fr;align-items:start;gap:10px;padding:12px 14px;
+pointer-events:none}
+#ptcNextTrackBtn{grid-column:1;justify-self:start;pointer-events:auto}
+#raceHud{grid-column:2;justify-self:center;background:#0f172aee;
 border:1px solid var(--border);border-radius:12px;padding:8px 12px;font-size:12px;
 color:var(--text);line-height:1.6;display:none;pointer-events:none;max-width:230px}
 #raceHud.show{display:block}
 #raceHud b{font-weight:700}
+/* Narrow screens: stack the HUD under the button — the bar grows and the
+   quiz inset follows the measured height automatically. */
+@media (max-width:760px){
+  #ptcTopBar{grid-template-columns:1fr}
+  #raceHud{grid-column:1;justify-self:start;max-width:170px;font-size:11px}
+}
 #raceHud .dim{opacity:.45}
 #raceHud .good{color:var(--good)}
 /* Bottom-left in-race HUD: jet/jump ability readiness. Kept separate from
-   #raceHud (top-left) so the attempt counter never overlaps. */
+   #raceHud (top-center) so the attempt counter never overlaps. */
 #powerHud{position:fixed;left:14px;bottom:14px;z-index:1000000;background:#0f172aee;
 border:1px solid var(--border);border-radius:12px;padding:8px 12px;font-size:12px;
 color:var(--text);line-height:1.6;display:none;pointer-events:none;max-width:230px}
@@ -1550,9 +1564,9 @@ const PHYS_DEFS=[
   {key:"suspDamp",label:"🛞 Suspension Damping",desc:"Controls how fast the body settles after bumps",
     min:0.5,max:2.0,step:0.05,def:1.0,fmt:v=>`${v.toFixed(2)}×`},
   {key:"steerSpeed",label:"🎯 Steering Speed",desc:"How fast the wheels turn in/out",
-    min:0.5,max:2.0,step:0.05,def:1.0,fmt:v=>`${v.toFixed(2)}×`},
+    min:0.5,max:2.0,step:0.05,def:1.1,fmt:v=>`${v.toFixed(2)}×`},
   {key:"stability",label:"🧲 Turning Stability",desc:"Extra yaw damping — kills wobble and catch-drift",
-    min:0.5,max:3.0,step:0.1,def:1.0,fmt:v=>`${v.toFixed(1)}×`},
+    min:0.5,max:3.0,step:0.1,def:1.2,fmt:v=>`${v.toFixed(1)}×`},
   {key:"driftKeep",label:"🏁 Drift Momentum",desc:"How much speed a deliberate drift keeps",
     min:0.0,max:1.0,step:0.05,def:0.5,fmt:v=>`${Math.round(v*100)}%`},
   {key:"airG",label:"🪂 Air Gravity",desc:"Extra gravity while airborne — snappier landings",
@@ -1590,6 +1604,24 @@ function physTuneGet(key){
   // If the clamped range is inverted, fall back to the hard default
   if(rMin>=rMax)return d.def;
   return Math.max(Math.min(rMax,v),Math.min(rMax,rMin));
+}
+/* REUSABLE native force vector: the downforce/mass forces used to allocate
+   a fresh Ammo btVector3 on the WASM heap EVERY FRAME and never destroy it
+   — an unbounded native-memory leak while those upgrades are active (worst
+   on a nearly fully upgraded car). This ONE cached vector is value-reset
+   per call and never destroyed. If Ammo is unavailable there is NO fallback
+   allocation — the caller just skips the force this frame. */
+let __PTCForceVec3Cache=null;
+function __PTCForceVec3(x,y,z){
+  try{
+    if(!__PTCForceVec3Cache&&window.Ammo&&window.Ammo.btVector3)
+      __PTCForceVec3Cache=new window.Ammo.btVector3(0,0,0);
+    if(__PTCForceVec3Cache&&typeof __PTCForceVec3Cache.setValue==="function"){
+      __PTCForceVec3Cache.setValue(x,y,z);
+      return __PTCForceVec3Cache;
+    }
+  }catch(e){}
+  return null;   /* never allocate per-frame — skip the force instead */
 }
 /* Bullet Vec3 helper — lazily resolved from the game's global. */
 let __PTCVec3Ctor=null;
@@ -1629,8 +1661,8 @@ function carPerf(){
     downforce:physTuneAllowed()?physTuneGet("downforce"):1.0,
     suspStiff:((physTuneAllowed()?physTuneGet("suspStiff"):1.0)*(1+0.10*appliedLevel("susp"))),
     suspDamp:physTuneAllowed()?physTuneGet("suspDamp"):1.0,
-    steerSpeed:((physTuneAllowed()?physTuneGet("steerSpeed"):1.0)*(1+0.10*appliedLevel("steer"))),
-    stability:physTuneAllowed()?physTuneGet("stability"):1.0,
+    steerSpeed:((physTuneAllowed()?physTuneGet("steerSpeed"):1.1)*(1+0.10*appliedLevel("steer"))),
+    stability:physTuneAllowed()?physTuneGet("stability"):1.2,
     driftTune:physTuneAllowed()?physTuneGet("driftKeep"):0.5,
     airGTune:physTuneAllowed()?physTuneGet("airG"):1.6,
     /* trans: launch / gearing — folds into accel (used by applyEngineForce). */
@@ -1714,10 +1746,14 @@ function isDrifting(car){
    next race. JUMP: SPACE pops the car off the ground (buyable upgrade);
    Jump Jets V adds a DOUBLE jump in mid-air. Both are pricey and gated
    behind the top levels on purpose — they're earned, not given. */
+/* Never-hit sentinel: makes "no window is open" explicit — nowMs minus
+   this is never < 700, so a fresh page/car can never read as mid-window. */
+const PTC_HIT_NEVER=-1e15;
 const BOOST={turboUntil:0,turboMult:1,turboRun:-1,jumpNextAt:0,airJumps:0,
   jetFuel:0,jetMax:0,jetRun:-1,jetOn:false,jetCar:null,
-  lastHitAt:0,lastJumpAt:0,lvx:null,lvy:null,lvz:null};
+  lastHitAt:PTC_HIT_NEVER,lastJumpAt:0,lastGroundedAt:0,lvx:null,lvy:null,lvz:null};
 let lavaTouchAt=0;   // lava grass-reset throttle
+let ptcNextTrackAction=null;   // set by the Next-track button IIFE (shared action)
 function turboActive(){return BOOST.jetOn;}
 function jetLevel(){return Math.min(5,upgradeLevel("turbo"));}
 function jetAccel(){return 12+2.5*jetLevel();}   // m/s^2 of real thrust
@@ -1824,6 +1860,21 @@ function tryJump(e){
 window.addEventListener("keydown",e=>{
   if(e.code==="Space"){tryJump(e);}
   else if(e.key==="Shift"||e.code==="ShiftLeft"||e.code==="ShiftRight"){tryTurbo();}
+  else if(e.code==="KeyN"){
+    /* Finish-line shortcut: N advances to the next track while the finish
+       prompt is up (the deliberate keypress supplies the confirmation;
+       attempts/finish/teacher rules still apply inside the action). Only
+       while the prompt is for the CURRENT run — a restart invalidates it. */
+    try{
+      if(finishNextActive()&&!e.repeat&&!abilityInputBlocked()){
+        e.preventDefault();
+        /* Prompt RETAINED when the action is blocked — its guards toast the
+           reason; it hides naturally (new run, question popup, stale
+           context) or via its ✕. */
+        try{if(ptcNextTrackAction)ptcNextTrackAction(null,true);}catch(_e){}
+      }
+    }catch(_e){}
+  }
 },true);
 window.addEventListener("keyup",e=>{
   if(e.key==="Shift"||e.code==="ShiftLeft"||e.code==="ShiftRight")jetStop();
@@ -1911,17 +1962,53 @@ HOOKS.frameJobs.push(function carFeelFrameJob(){
       const nowMs=performance.now();
       /* new car instance (restart/new run): reset the samples so the spawn
          teleport is never mistaken for a collision */
-      if(BOOST.hitCar!==car){BOOST.hitCar=car;BOOST.lvx=BOOST.lvy=BOOST.lvz=null;BOOST.lastHitAt=0;}
+      if(BOOST.hitCar!==car){BOOST.hitCar=car;BOOST.lvx=BOOST.lvy=BOOST.lvz=null;BOOST.lastHitAt=PTC_HIT_NEVER;BOOST.lastGroundedAt=0;BOOST.groundFrames=0;}
       const justJumped=(nowMs-(BOOST.lastJumpAt||0))<700;
-      const dvx=vx-(BOOST.lvx==null?vx:BOOST.lvx),
-            dvy=vy-(BOOST.lvy==null?vy:BOOST.lvy),
-            dvz=vz-(BOOST.lvz==null?vz:BOOST.lvz);
+      /* Launch memory: a car that was rolling on its wheels within the last
+         250ms is being LAUNCHED by a surface (ramp lip, jump edge) — an
+         impulsive velocity swing right after leaving the ground is that
+         launch, not a mid-air collision. */
+      if(grounded)BOOST.lastGroundedAt=nowMs;
+      const recentlyGrounded=nowMs-(BOOST.lastGroundedAt||0)<250;
+      const ovx=(BOOST.lvx==null?vx:BOOST.lvx),ovy=(BOOST.lvy==null?vy:BOOST.lvy),ovz=(BOOST.lvz==null?vz:BOOST.lvz);
+      const dvx=vx-ovx,dvy=vy-ovy,dvz=vz-ovz;
       BOOST.lvx=vx;BOOST.lvy=vy;BOOST.lvz=vz;
-      if(Math.hypot(dvx,dvy,dvz)>6&&!justJumped)BOOST.lastHitAt=nowMs;
-      /* jumps are never damped — even inside an open collision window */
-      if((nowMs-(BOOST.lastHitAt||0))<700&&!justJumped){
-        const nvy=Math.min(vy,3.2);
-        const w=Math.hypot(wx,wy,wz),sc=w>4?4/w:1;
+      /* RAMP/JUMP PRESERVATION: while the wheels are ON a drivable surface,
+         only a spike that LOSES speed (real wall/obstacle impact) opens the
+         hit window. Airborne, only a violent upward spike (flip-launch) in
+         a car that has been flying for a while (mid-air collision) does —
+         never a fresh takeoff. Ramp/jump launches keep speed and pitch. */
+      const spike=Math.hypot(dvx,dvy,dvz)>6;
+      const energyLost=Math.hypot(vx,vy,vz)<Math.hypot(ovx,ovy,ovz)*0.82;
+      /* A NEW impact this frame RESETS the recovery history (and the
+         retirement below cannot clear it in the same frame — the counter
+         restarts at 0 on the impact frame), so a wall hit after prolonged
+         grounded driving still opens its window. */
+      if(spike&&!justJumped&&(grounded?energyLost:(dvy>9&&!recentlyGrounded))){
+        BOOST.lastHitAt=nowMs;BOOST.groundFrames=0;
+      }
+      /* RETIRE a stale collision window on a RECOGNIZED drivable-contact
+         transition: 6+ CONSECUTIVE frames with a wheel raycast in contact
+         (the engine's own wheel-contact contract) is the car back DRIVING
+         on a surface. A crash bounce typically shows only a few contact
+         frames before it tumbles, so the post-hit flip the window exists
+         to damp is normally not cut short; once the car is really driving
+         again the window is DEAD — later airborne motion (a ramp launch)
+         is new motion, and a fresh takeoff can normally not re-open one
+         (the airborne trigger needs 250ms+ of airtime). */
+      BOOST.groundFrames=grounded?(BOOST.groundFrames||0)+1:0;
+      if((BOOST.groundFrames||0)>=6)BOOST.lastHitAt=PTC_HIT_NEVER;
+      /* Damping applies ONLY to a violent TUMBLE: airborne, past the fresh
+         launch exemption (recently grounded), never while rolling on the
+         wheels (that read as friction/ramps "failing"), never right after
+         a jump — and only while the car is actually SPINNING hard
+         (angular speed > 8). A smooth ramp/jump launch carries little
+         spin and is not damped; a crash flip spins hard and is. Caps
+         are soft: kill the violent flip, keep momentum. */
+      const wNow=Math.hypot(wx,wy,wz);
+      if((nowMs-(BOOST.lastHitAt||0))<700&&!justJumped&&!grounded&&!recentlyGrounded&&wNow>8){
+        const nvy=Math.min(vy,4.5);
+        const w=wNow,sc=w>6?6/w:1;
         if(nvy!==vy||sc!==1){
           const tv=new window.Ammo.btVector3(vx,nvy,vz);
           try{b.setLinearVelocity(tv);}finally{try{window.Ammo.destroy(tv);}catch(_m){}}
@@ -2015,7 +2102,8 @@ function carPerfFrameJob(){
       const sp=Math.hypot(v.x(),v.z());
       if(sp>3&&anyWheelGrounded(car)){
         const df=(p.downforce-1)*sp*sp*0.08;
-        b.applyCentralForce(__PTCVec3(0,-df,0));
+        const fv=__PTCForceVec3(0,-df,0);
+        if(fv)b.applyCentralForce(fv);   /* cached vector — no per-frame leak */
       }
     }
   }catch(e){}
@@ -2029,7 +2117,8 @@ function carPerfFrameJob(){
       const massMult=Math.min(2.0,Math.max(0.5,p.mass||1));
       // Extra gravity-ish force proportional to mass
       const extraG=(massMult-1)*9.8*0.15;
-      b.applyCentralForce(__PTCVec3(0,-extraG,0));
+      const fv2=__PTCForceVec3(0,-extraG,0);
+      if(fv2)b.applyCentralForce(fv2);   /* cached vector — no per-frame leak */
       // Heavier also = more linear damping (slower to accelerate)
       const lin=(typeof b.getLinearDamping==="function")?b.getLinearDamping():null;
       if(lin!=null&&carPerfState.base&&carPerfState.base.lin!=null)
@@ -2101,7 +2190,7 @@ function resetCarPerf(){
     }catch(e){}
   }
   BOOST.turboUntil=0;BOOST.turboRun=-1;BOOST.jumpNextAt=0;BOOST.jetCar=null;   // abilities reset too
-  BOOST.lastHitAt=0;BOOST.lastJumpAt=0;BOOST.lvx=BOOST.lvy=BOOST.lvz=null;BOOST.hitCar=null;
+  BOOST.lastHitAt=PTC_HIT_NEVER;BOOST.lastJumpAt=0;BOOST.lastGroundedAt=0;BOOST.lvx=BOOST.lvy=BOOST.lvz=null;BOOST.hitCar=null;BOOST.groundFrames=0;
   carPerfState={key:"",at:0,car:null,base:null,ok:false};
 }
 
@@ -2475,12 +2564,18 @@ function soloTrackStateAll(){try{return JSON.parse(__LS.getItem("ptc-solo-track"
 function saveSoloTrackState(st){try{__LS.setItem("ptc-solo-track",JSON.stringify(st||{cur:1,tracks:{}}));}catch(e){}}
 let soloNextConfirm=false,soloSkipConfirm=false;
 function soloTrackComplete(k){toast(`🎉 ${trackName(k)} complete — use ▶ Next track to move on!`);}
-function soloNextTrack(btn){
+function soloNextTrack(btn,confirmOk){
   const b=btn||$("nextTrackBtn");
-  if(!soloNextConfirm){
-    const ts=curTrackState(),lim=limitForTrack();
-    if((ts.attempts||0)<lim)return toast(`You've used ${ts.attempts||0}/${lim} attempts — finish them first!`);
-    if(!trackDone())return toast(reqFinishOn()?"You must cross the FINISH LINE at least once to complete this track.":"Finish your attempts on this track first!");
+  /* Guards shared by EVERY activation — including the confirmed one (the
+     finish-line "press N" prompt and this window's own second click pass
+     confirmOk=true): a confirmed click can never skip the progression
+     rules. When the player is not eligible the action is blocked with its
+     guidance toast and the prompt stays up; the next press works once
+     they are. */
+  const ts=curTrackState(),lim=limitForTrack();
+  if((ts.attempts||0)<lim)return toast(`You've used ${ts.attempts||0}/${lim} attempts — finish them first!`);
+  if(!trackDone())return toast(reqFinishOn()?"You must cross the FINISH LINE at least once to complete this track.":"Finish your attempts on this track first!");
+  if(!soloNextConfirm&&!confirmOk){
     soloNextConfirm=true;
     if(b)b.textContent="Really move on? Click again";
     setTimeout(()=>{soloNextConfirm=false;refreshUI();
@@ -3881,8 +3976,8 @@ $("unlockTrackBtn").onclick=startUnlockQuiz;
 /* Shared "move to next track" flow — used by BOTH the panel button and the
    floating ▶ Next track button. `btn` is whichever button was clicked; the
    two-step confirm text is shown on that button. */
-async function classNextTrack(btn){
-  if(soloMode)return soloNextTrack(btn);
+async function classNextTrack(btn,confirmOk){
+  if(soloMode)return soloNextTrack(btn,confirmOk);
   // Guard: this track must be COMPLETED (all attempts used) before moving on.
   if((curTrackState().attempts||0)<limitForTrack())
     return toast("Finish this track's attempts first!");
@@ -3890,7 +3985,7 @@ async function classNextTrack(btn){
     return toast("You must cross the finish line at least once to complete this track!");
   const nt=curTrack+1;
   if(nt>trackTotal())return toast("That was the last track — re-unlock it to keep playing!");
-  if(!nextConfirm){
+  if(!nextConfirm&&!confirmOk){
     nextConfirm=true;
     if(btn)btn.textContent="Really move on? Click again";
     clearTimeout(nextConfirmTimer);
@@ -3922,7 +4017,7 @@ function soloNextFreeTrack(){
   const nt=wrapped?1:base+1;
   curTrack=nt;
   const st=soloTrackStateAll();st.cur=nt;saveSoloTrackState(st);
-  const sel=trySelectGameTrack(nt,info&&info.root);
+  const sel=trySelectGameTrack(nt,info);
   if(sel)toast(`▶ ${trackName(nt)}${wrapped&&total>1?" — back to Track 1!":" — loading!"}`);
   else toast(wrapped&&total>1?"That was the last track — back to Track 1!":"▶ Next up: "+trackName(nt)+" — open the Play menu to race it.");
 }
@@ -4590,9 +4685,12 @@ setInterval(()=>{
   if(t&&t.ms>0)RACE.lastNonZero={text:t.text,ms:t.ms};
   RACE.lastMs=t?t.ms:null;
   if(RACE.phase!=="running")$("shadowHud").classList.remove("show");
+  if(popupOpen)hideFinishNextPopup();   // question on screen — drop the finish prompt
+  if(finishNextVisible()&&!finishNextContextOk())hideFinishNextPopup();   // stale (restart/track/class change)
   if(RACE.phase==="idle"||RACE.phase==="ended"){
     // A new run can only begin once the finish announcer is gone (latch).
     if(t&&t.ms>0&&moving&&!finished){
+      hideFinishNextPopup();   // new run starting — the finish prompt is stale
       if(isTracksMode()){
         // Tracks mode: verify the GAME track and the attempt budget BEFORE
         // this run counts. Unauthorized runs are not counted or logged.
@@ -4643,7 +4741,35 @@ setInterval(()=>{
       }else{
         RACE.phase="ended";
         stopReplayCapture();stopVideoCapture();
-        logResult(RACE.lastNonZero||t,"finish",RACE.runId);
+        const finRun=RACE.runId;   /* capture BEFORE the async log */
+        /* Immutable finish context, also captured BEFORE the save and passed
+           unchanged through the wait and the prompt — a track/course change
+           during the save can never become the "original" context (the
+           prompt's context check compares against THESE values). */
+        const finTrack=curTrack,finCtx={cls:classCode||null,solo:!!soloMode,pid:ptcPlayerId(),ref:studentRef||null,game:gameTrack,fun:!!funMode(),tracks:!!isTracksMode()};
+        logResult(RACE.lastNonZero||t,"finish",RACE.runId).then(out=>{
+          /* finish-line "press N" prompt — only AFTER the finish save
+             resolves, only if this is still the same run/track (a restart
+             or course change during the log must not show a stale prompt),
+             and only when the finish actually PERSISTED: logResult now
+             returns an explicit outcome (the class student-doc update
+             resolving, or solo's local save). A failed save gets guidance
+             instead of the prompt — the Next-track button still works.
+             On a successful save the bounded wait only covers LOCAL
+             snapshot lag — and on its bound the prompt still shows because
+             the write is verified. The N action's guards remain the
+             authority, and a blocked action KEEPS the prompt (its guidance
+             toast is right there; the next press works). */
+          if(RACE.runId!==finRun)return;
+          /* Only players the prompt exists for get the failure guidance
+             (a teacher's run has nothing to persist — logResult's
+             {saved:false} for them is not a failure). */
+          if(out&&out.saved===false&&(soloMode||((me&&me.role==="student")&&classCode))){
+            toast("Finish recorded, but it didn't save — check your connection; finish again if the track doesn't unlock.");
+            return;
+          }
+          waitFinishStateThenShow(finRun,finTrack,finCtx);
+        }).catch(()=>{});
       }
     }else if(t&&t.ms!=null&&prevMs!=null&&(t.ms===0||t.ms<prevMs)){
       // Timer reset or rolled back -> the player restarted/abandoned the run.
@@ -5179,15 +5305,20 @@ function myCarPos(){
   const nb=document.createElement("button");
   nb.id="ptcNextTrackBtn";
   nb.textContent="▶ Next track";
-  nb.style.cssText="position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:99999;pointer-events:auto;background:#8b5cf6;color:#fff;border:none;border-radius:999px;padding:8px 18px;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.35);font-family:inherit";
+  nb.style.cssText="background:#8b5cf6;color:#fff;border:none;border-radius:999px;padding:12px 26px;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.35);font-family:inherit;max-width:200px;white-space:normal;line-height:1.25;text-align:center";
   nb.style.display="none";
   nb.onmouseenter=()=>nb.style.filter="brightness(1.15)";
   nb.onmouseleave=()=>nb.style.filter="";
-  nb.onclick=()=>{
+  nb.onclick=()=>nextTrackAction(nb,false);
+  /* Shared next-track action — used by the floating button AND the
+     finish-line shortcut. `confirmOk` (the finish key is a deliberate,
+     single keypress) supplies the two-click confirmation itself; every
+     other rule (attempts, finish line, teacher skip settings) still applies. */
+  function nextTrackAction(btn,confirmOk){
     if(soloMode){
       /* Solo: with track rules on, use the guarded flow; with rules off
          (plain non-educational solo), just point at the next track. */
-      if(soloTracksOn())soloNextTrack(nb);
+      if(soloTracksOn())soloNextTrack(btn,confirmOk);
       else soloNextFreeTrack();
       return;
     }
@@ -5201,7 +5332,7 @@ function myCarPos(){
       const base=freeModeTrackBase(total);
       const nt=base>=total?1:base+1;
       curTrack=nt;
-      const sel=trySelectGameTrack(nt,info&&info.root);
+      const sel=trySelectGameTrack(nt,info);
       toast("Fun Mode — every track is open. "+(sel?trackName(nt)+" — loading!":"Next up: "+trackName(nt)+"."));
       return;
     }
@@ -5212,7 +5343,7 @@ function myCarPos(){
          current track. */
       const nt=curTrack+1;
       if(nt>trackTotal())return toast("That was the last track — re-unlock it to keep playing!");
-      if(trackDone()){classNextTrack(nb);return;}
+      if(trackDone()){classNextTrack(btn,confirmOk);return;}
       tryAskLockedTrack(gameTrackForClassTrack(nt));
       return;
     }
@@ -5224,12 +5355,132 @@ function myCarPos(){
       const base=freeModeTrackBase(total);
       const nt=base>=total?1:base+1;
       curTrack=nt;
-      const sel=trySelectGameTrack(nt,info&&info.root);
+      const sel=trySelectGameTrack(nt,info);
       toast(sel?`▶ ${trackName(nt)} — loading!`:`Quiz mode: questions pop up as you race. Next course: ${trackName(nt)} — open the Play menu to race it.`);
     }
-  };
-  document.body.appendChild(nb);
+  }
+  /* Shared top bar: the button and the attempts HUD flow in ONE grid header
+     (no overlap possible at any width), and the quiz/race-locked strip
+     reserves the bar's ACTUAL height — a ResizeObserver feeds
+     --ptc-top-inset, so a wrapped confirm label or a stacked narrow-screen
+     layout grows the reserve automatically. */
+  let bar=document.getElementById("ptcTopBar");
+  if(!bar){
+    bar=document.createElement("div");
+    bar.id="ptcTopBar";
+    document.body.appendChild(bar);
+    const hud=document.getElementById("raceHud");
+    if(hud)bar.appendChild(hud);   /* static-HTML HUD moves into the bar */
+    try{
+      if(typeof ResizeObserver==="function")
+        new ResizeObserver(()=>{
+          try{
+            const h=bar.offsetHeight;
+            document.documentElement.style.setProperty("--ptc-top-inset",(h>0?h+12:70)+"px");
+          }catch(e){}
+        }).observe(bar);
+    }catch(e){}
+  }
+  bar.prepend(nb);   /* button FIRST in the grid — the HUD stacks BELOW it on narrow screens */
+  ptcNextTrackAction=nextTrackAction;   /* shared with the finish-line shortcut */
 })();
+/* ---------------- Finish-line "press N" shortcut ----------------
+   When a run is VERIFIED finished, a small prompt appears: press N (or
+   click it) to go to the next track — no hunting for the button mid-flow.
+   It hides on the next run start, while a question popup is open, and after
+   use. Bound to the run that finished it. */
+let ptcFinishRun=null,ptcFinishTrack=null,ptcFinishCtx=null;
+/* ONE context matcher, checked at EVERY stage — before waiting, before
+   displaying, and before activation: run, track, class, solo mode, player
+   identity, the student doc the save targeted (studentRef — the same
+   identity logResult's stillMine pattern checks), the engine's actually
+   selected course (gameTrack), and the question/free-mode navigation
+   state (funMode/isTracksMode) must all still match the values captured
+   at finish time. */
+function ptcFinishCtxMatches(runId,trackKey,ctx){
+  try{
+    if(runId==null||RACE.runId!==runId)return false;
+    if(curTrack!==trackKey)return false;
+    if(!ctx)return false;
+    if((classCode||null)!==(ctx.cls||null))return false;
+    if(!!soloMode!==!!ctx.solo)return false;
+    if(ptcPlayerId()!==(ctx.pid||null))return false;
+    if((studentRef||null)!==(ctx.ref||null))return false;
+    if(gameTrack!==ctx.game)return false;
+    if(!!funMode()!==!!ctx.fun)return false;
+    if(!!isTracksMode()!==!!ctx.tracks)return false;
+    return true;
+  }catch(e){return false;}
+}
+function finishNextVisible(){
+  try{
+    const el=$("ptcFinishNext");
+    return !!(el&&el.style.display!=="none");
+  }catch(e){return false;}
+}
+/* The prompt only counts while it belongs to the run/track/class that
+   finished — a restart (new runId), a track switch, or leaving the class
+   makes it stale and the poll hides it; this guards the activation path too. */
+function finishNextContextOk(){
+  return ptcFinishCtxMatches(ptcFinishRun,ptcFinishTrack,ptcFinishCtx);
+}
+function finishNextActive(){return finishNextVisible()&&finishNextContextOk();}
+function showFinishNextPopup(runId,trackKey,ctx){
+  try{
+    /* only for players the Next-track action exists for */
+    if(!(soloMode||((me&&me.role==="student")&&classCode)))return;
+    /* context comes from the CALLER (captured at finish time), never
+       re-read here — a course/class change during the save cannot become
+       the "original" context. */
+    ptcFinishRun=runId;ptcFinishTrack=trackKey;ptcFinishCtx=ctx||null;
+    /* validated BEFORE displaying — a mismatched context never shows */
+    if(!ptcFinishCtxMatches(ptcFinishRun,ptcFinishTrack,ptcFinishCtx)){
+      ptcFinishRun=null;ptcFinishCtx=null;return;
+    }
+    let el=$("ptcFinishNext");
+    if(!el){
+      el=document.createElement("div");
+      el.id="ptcFinishNext";
+      el.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:99999;background:#171923;border:1px solid var(--accent);border-radius:14px;padding:10px 20px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 8px 30px rgba(0,0,0,.45);font-family:inherit;max-width:calc(100vw - 28px);text-align:center";
+      el.innerHTML='🏁 Finished! Press <span style="display:inline-block;background:#8b5cf6;border-radius:6px;padding:1px 9px;margin:0 2px">N</span> for the next track <span id="ptcFinishX" title="Dismiss" style="display:inline-block;margin-left:10px;opacity:.6;font-weight:400">✕</span>';
+      el.title="Next track";
+      /* Retained when blocked: the action's own guards toast the reason;
+       the prompt hides itself naturally (new run, question popup, stale
+       context) or via ✕. */
+      el.onclick=(ev)=>{
+        try{
+          if(ev&&ev.target&&ev.target.id==="ptcFinishX")return hideFinishNextPopup();
+        }catch(e){}
+        if(!finishNextActive())return hideFinishNextPopup();
+        try{if(ptcNextTrackAction)ptcNextTrackAction(null,true);}catch(e){}
+      };
+      document.body.appendChild(el);
+    }
+    el.style.display="";
+  }catch(e){}
+}
+/* Give the LOCAL state a bounded moment to reflect the finish the save
+   just wrote (snapshot lag only) before showing the prompt. Completion
+   itself is already established — logResult RESOLVED (the write went
+   through); only the local cache may lag, so the bound shows the prompt
+   anyway. The N action's guards remain the authority, and a blocked
+   action keeps the prompt so its guidance toast is right there. */
+function waitFinishStateThenShow(runId,trackKey,ctx){
+  let tries=0;
+  const step=()=>{
+    try{
+      if(!ptcFinishCtxMatches(runId,trackKey,ctx))return;   /* stale — never show */
+      const ts=curTrackState();
+      if((ts&&ts.hasFinish)||++tries>=8)return showFinishNextPopup(runId,trackKey,ctx);
+    }catch(e){return showFinishNextPopup(runId,trackKey,ctx);}
+    setTimeout(step,250);
+  };
+  step();
+}
+function hideFinishNextPopup(){
+  ptcFinishRun=null;ptcFinishCtx=null;
+  try{const el=$("ptcFinishNext");if(el)el.style.display="none";}catch(e){}
+}
 /* ---------------- Locked-track dialog ----------------
    When a student clicks a LOCKED track that is the NEXT one in the road,
    ask: answer its questions to unlock it, or finish the previous track. */
@@ -5365,7 +5616,7 @@ function updateRaceHud(){
     hud.classList.toggle("show",show);
     /* Floating ▶ Next track button: always available to the player —
        solo (any rules) and class students (any mode). Clickable any time;
-       stays top-center so it's out of the way of the other UI. */
+       top-left, clear of the centered attempts HUD. */
     const fb=document.getElementById("ptcNextTrackBtn");
     if(fb){
       const on=soloMode||((me&&me.role==="student")&&classCode);
@@ -5878,9 +6129,11 @@ async function logResult(t,endedBy,runId){
       if(k===curTrack&&trackDone())soloTrackComplete(k);
       refreshUI();
     }
-    return;
+    return{saved:true};   /* solo progress is LOCAL — it persisted */
   }
-  if(!me||me.role!=="student"||!classCode)return;
+  if(!me||me.role!=="student"||!classCode)return{saved:false};
+  /* Explicit persistence outcome — see the student-doc update below. */
+  let saved=false;
   /* Consume THIS run's video capture up front (before any await) so a fast
      restart can never orphan or re-attach it. */
   const vidPick=(vidDone&&vidDone.runId===runId)?vidDone:null;vidDone=null;
@@ -6004,7 +6257,9 @@ async function logResult(t,endedBy,runId){
       if(tracksMode&&endedBy==="finish")upd[`tracks.${runTrack}.hasFinish`]=true;
       // Nitro canister consumed by this run.
       if(nitroOwned>0)upd[`consumables.nitroCan`]=firebase.firestore.FieldValue.increment(-1);
-      await myRef.update(upd).catch(()=>{});
+      /* Explicit outcome: a RESOLVED logResult no longer claims the save
+         went through — only the student-doc update actually resolving does. */
+      await myRef.update(upd).then(()=>{saved=true;}).catch(()=>{});
     }
     if(endedBy==="finish"&&stillMine())await upsertLeaderboard(payload).catch(()=>{});
     toast(endedBy==="finish"?`Result logged — final time ${payload.finalTimeText}.`:"Run recorded.");
@@ -6058,6 +6313,7 @@ async function logResult(t,endedBy,runId){
      the deferred quiz results. Delayed briefly so the track update lands. */
   if(tracksMode&&same&&endedBy==="finish"&&curTrack>=trackTotal())
     setTimeout(()=>{try{if(trackDone())maybeAutoOpenResults();}catch(e){}},1200);
+  return{saved};
 }
 
 /* Refresh the leaderboard entry's Points column from the student doc
