@@ -1252,6 +1252,12 @@ input[type="text"]:focus-visible {
       <button id="soloExitBtn" class="primary">Join a class →</button>
     </div>
   </div>
+  <div class="card hidden" id="soloModeCard">
+    <h3>🎮 Your solo game mode</h3>
+    <p class="small">Pick your mode and <b>lock it in</b> before you start — racing stays locked until you do, and you can't change it later without starting over. Your money and track progress belong to the mode you pick.</p>
+    <div id="soloModeChoices"></div>
+    <div class="small" id="soloModeNote"></div>
+  </div>
   <div class="card hidden" id="soloRulesCard">
     <h3>🎯 Solo track rules</h3>
     <p class="small">Play with the classroom track rules — no questions. Tracks stay locked in order: you can't move to the next track until you've used your attempts and crossed the finish line. All progress is saved in this browser only.</p>
@@ -2340,7 +2346,9 @@ const SHOP_CATALOG=[
   );
 })();
 function shopCost(item){
-  if(soloMode)return 0;   // solo practice: the Garage is free
+  /* Solo practice is free EXCEPT in grind modes, where the wallet economy
+     is the whole point — items cost their base price (no teacher multiplier). */
+  if(soloMode)return soloGrindOn()?Math.round(item.cost||0):0;
   return Math.round(item.cost*(parseFloat(S().shopCostMultiplier)||1));
 }
 /* ♻️ Reset: sells back every PERFORMANCE upgrade (engine/tires/aero/brakes
@@ -2348,13 +2356,35 @@ function shopCost(item){
    and pit-stop stock are kept. Tune settings are cleared. */
 async function resetAllUpgrades(){
   if(soloMode){
-    /* SOLO: reset this browser's solo car back to stock (free anyway). */
-    saveSoloCar(null);
+    /* SOLO: reset this browser's solo car back to stock. In grind modes
+       every performance upgrade is sold back at full price into the wallet. */
+    let refund=0;
+    if(soloGrindOn()){
+      const mine=myUpgrades();
+      SHOP_CATALOG.forEach(it=>{if(it.cat==="perf"&&mine.includes(it.id))refund+=shopCost(it);});
+    }
+    if(soloGrindOn()){
+      /* Keep what the student PAID for that isn't a performance upgrade
+         (paints, cosmetics, consumables) — only perf upgrades + their tuning
+         are sold back. */
+      const sc=soloCar()||{};
+      const kept=(Array.isArray(sc.upgrades)?sc.upgrades:[]).filter(uid=>{
+        const it=SHOP_CATALOG.find(x=>x.id===uid);return it&&it.cat!=="perf";});
+      const next=Object.assign({},sc,{upgrades:kept});
+      delete next.perfTune;
+      saveSoloCar(next);
+    }else{
+      saveSoloCar(null);
+    }
     resetCarColors();
     resetCarPerf();
+    const ksc=soloCar();
+    if(ksc&&Array.isArray(ksc.carColors)&&ksc.carColors.length>=4)applyPaintsNow(ksc.carColors);
+    if(refund>0)soloAddMoney(refund);
     refreshUI();
     renderShop();
-    toast("♻️ Solo car reset to stock.");
+    renderSoloModeCard();
+    toast(refund>0?`♻️ Solo car reset to stock — $${refund} refunded to your wallet.`:"♻️ Solo car reset to stock.");
     return;
   }
   if(!studentRef||!me||me.role!=="student")return toast("Join a class to reset upgrades.");
@@ -2585,7 +2615,11 @@ function soloSettings(){
   return v;
 }
 function saveSoloSettings(s){try{__LS.setItem("ptc-solo-settings",JSON.stringify(s||{}));}catch(e){}__ptcBumpState();}
-function soloTracksOn(){return soloMode&&soloSettings().tracks===true;}
+/* Lock-first: once a mode is locked in, the LOCK owns the rules (the live
+   soloSettings fields are frozen copies of it). Every rule read goes through
+   the lock, so what's enforced can never disagree with the lock. */
+function soloEffRules(){const l=soloLock();return l?l:(soloSettings()||{});}
+function soloTracksOn(){return soloMode&&soloEffRules().tracks===true;}
 let __soloTrackMemo={ver:-1,val:null};
 function soloTrackStateAll(){
   if(__soloTrackMemo.ver===__PTC_STATE_VER&&__soloTrackMemo.val)return __soloTrackMemo.val;
@@ -2856,7 +2890,7 @@ function S(){
      tracks-mode logic (track count, attempts, finish requirement, skip)
      works without a class. */
   if(soloTracksOn()){
-    const ss=soloSettings();
+    const ss=soloEffRules();
     return {
       questionMode:"tracks",
       trackCount:Math.max(1,Math.min(20,parseInt(ss.count)||7)),
@@ -3012,6 +3046,9 @@ $("resultsBtn").onclick=()=>{resultsUnseen=false;openResultsView();};
 /* Solo car import/export: the pasted code becomes THIS browser's solo car.
    A class never imports — its car always comes from the class doc. */
 $("soloImportBtn").onclick=()=>{
+  /* Grind modes are a closed economy — importing a fully-upgraded car would
+     defeat the whole grind, so the import dock is free-practice only. */
+  if(soloGrindOn())return toast("🔒 Car import is off in grind modes — build your car with money you earn!");
   const r=importCarCode($("soloImportBox").value);
   if(!r.ok)return toast(r.msg);
   if(!applySoloCar(r.pack))return toast("Importing only works in Solo practice — leave your class first.");
@@ -3036,13 +3073,18 @@ $("soloClearCarBtn").onclick=()=>{
    is stored locally and only affects solo practice. */
 function soloRulesSync(){
   const ss=soloSettings();
-  const chk=$("soloTracksChk");if(chk)chk.checked=ss.tracks===true;
-  const ci=$("soloCountInp");if(ci)ci.value=Math.max(1,Math.min(20,parseInt(ss.count)||7));
-  const ai=$("soloAttInp");if(ai)ai.value=Math.max(1,Math.min(100,parseInt(ss.attempts)||5));
-  const fc=$("soloFinChk");if(fc)fc.checked=ss.requireFinish!==false;
-  const sc=$("soloSkipChk");if(sc)sc.checked=ss.allowSkip===true;
+  /* Once a game mode is LOCKED IN, these controls freeze — the mode owns
+     the rules. (The handlers below also block programmatic changes.) */
+  const lk=!!soloLock();
+  const chk=$("soloTracksChk");if(chk){chk.checked=ss.tracks===true;chk.disabled=lk;}
+  const ci=$("soloCountInp");if(ci){ci.value=Math.max(1,Math.min(20,parseInt(ss.count)||7));ci.disabled=lk;}
+  const ai=$("soloAttInp");if(ai){ai.value=Math.max(1,Math.min(100,parseInt(ss.attempts)||5));ai.disabled=lk;}
+  const fc=$("soloFinChk");if(fc){fc.checked=ss.requireFinish!==false;fc.disabled=lk;}
+  const sc=$("soloSkipChk");if(sc){sc.checked=ss.allowSkip===true;sc.disabled=lk;}
 }
+function soloLockedToast(){toast("🔒 Your game mode is locked in — its rules can't be changed while you play. Use 🔄 Change mode in the Game mode card to start over.");}
 $("soloTracksChk").onchange=e=>{
+  if(soloLock()){e.target.checked=soloSettings().tracks===true;return soloLockedToast();}
   const ss=soloSettings();ss.tracks=e.target.checked;saveSoloSettings(ss);
   if(e.target.checked){const st=soloTrackStateAll();curTrack=st.cur||1;}
   soloNextConfirm=false;
@@ -3052,6 +3094,7 @@ $("soloTracksChk").onchange=e=>{
 ["soloCountInp","soloAttInp"].forEach(id=>{
   const el=$(id);if(!el)return;
   el.onchange=()=>{
+    if(soloLock()){soloRulesSync();return soloLockedToast();}
     const ss=soloSettings();
     if(id==="soloCountInp")ss.count=Math.max(1,Math.min(20,parseInt(el.value)||7));
     else ss.attempts=Math.max(1,Math.min(100,parseInt(el.value)||5));
@@ -3059,8 +3102,8 @@ $("soloTracksChk").onchange=e=>{
     refreshUI();
   };
 });
-$("soloFinChk").onchange=e=>{const ss=soloSettings();ss.requireFinish=e.target.checked;saveSoloSettings(ss);refreshUI();};
-$("soloSkipChk").onchange=e=>{const ss=soloSettings();ss.allowSkip=e.target.checked;saveSoloSettings(ss);refreshUI();};
+$("soloFinChk").onchange=e=>{if(soloLock()){e.target.checked=soloSettings().requireFinish!==false;return soloLockedToast();}const ss=soloSettings();ss.requireFinish=e.target.checked;saveSoloSettings(ss);refreshUI();};
+$("soloSkipChk").onchange=e=>{if(soloLock()){e.target.checked=soloSettings().allowSkip===true;return soloLockedToast();}const ss=soloSettings();ss.allowSkip=e.target.checked;saveSoloSettings(ss);refreshUI();};
 $("soloRulesResetBtn").onclick=()=>{
   try{__LS.removeItem("ptc-solo-track");}catch(e){}
   __ptcBumpState();   // direct removal — invalidate the memoized solo track state
@@ -3070,11 +3113,167 @@ $("soloRulesResetBtn").onclick=()=>{
 };
 /* ---------------- 🌋 solo lava toggle ---------------- */
 $("soloLavaBtn").onclick=()=>{
+  if(soloLock())return toast("🔒 Lava is part of your locked game mode — it can't be changed while you play. Use 🔄 Change mode to start over.");
   const on=!window.__PTC_LAVA;
   try{__LS.setItem("ptc_lava",on?"1":"0");}catch(e){}
   toast(on?"🌋 Lava mode ON — walls are gone; touch the grass and you reset. Reloading…":"Lava mode off — reloading…");
   setTimeout(()=>location.reload(),900);
 };
+/* ---------------- 🎮 solo game modes + money grind ----------------
+   Students pick a mode and LOCK IT IN before racing: racing is blocked
+   until a mode is locked (the same lock screen the classroom uses), the
+   track-rules card freezes, and grind modes run a real economy — the
+   Garage costs money and every finish line pays the chosen reward.
+   The wallet lives in soloSettings and every write goes through
+   saveSoloSettings (which bumps the memo version). */
+const SOLO_MODES=[
+  {id:"free",icon:"🆓",name:"Free Practice",blurb:"Everything open, Garage is FREE — classic solo practice. No money, no rules."},
+  {id:"grind",icon:"💰",name:"Money Grind",blurb:"Tracks unlock in order and the Garage costs money. Every finish line you cross pays your reward — race, earn, upgrade, repeat."},
+  {id:"challenge",icon:"🔥",name:"Challenge Grind",blurb:"Money Grind for the brave: you MUST cross the finish line and lava is ON (touch grass = reset). Same pay."}
+];
+let __soloPick=null;   // mode id chosen in the card (not yet locked)
+let __soloRewardDraft="25";  // $ reward per finish line — kept across re-renders of the card
+function soloLock(){const ss=soloSettings();return ss&&ss.lock?ss.lock:null;}
+function soloGrindOn(){const l=soloLock();return !!(l&&(l.mode==="grind"||l.mode==="challenge"));}
+function soloReward(){const l=soloLock();return l&&isFinite(l.reward)&&l.reward>=0?Math.floor(l.reward):25;}
+function soloWallet(){const ss=soloSettings();return Math.max(0,Math.floor(ss.wallet||0));}
+function soloAddMoney(n){const ss=soloSettings();ss.wallet=Math.max(0,Math.floor((ss.wallet||0)+n));saveSoloSettings(ss);}
+const soloPaidRuns=new Set();   // runIds already paid this session (one payout per run)
+const soloRunLocks=new Map();    // runId -> {lockId, mode} captured at run START
+function renderSoloModeCard(){
+  const card=$("soloModeCard");if(!card)return;
+  const h3=card.querySelector("h3"),choices=$("soloModeChoices"),note=$("soloModeNote");
+  const l=soloLock();
+  if(l){
+    const m=SOLO_MODES.find(x=>x.id===l.mode)||SOLO_MODES[0];
+    h3.innerHTML=`🎮 Your solo game mode <span style="display:inline-block;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:700;background:#064e3b;color:#34d399">🔒 ${m.name}</span>`;
+    choices.innerHTML=`<div class="small" style="margin:0">
+      <b>${m.icon} ${m.name}</b> — ${m.blurb}<br>
+      ${soloGrindOn()?`Reward: <b>$${soloReward()}</b> per finish line · Wallet: <b>$${soloWallet()}</b><br>`:""}
+      Your money and track progress belong to this mode — they carry over between sessions.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+      <button id="soloUnlockModeBtn" style="background:#7f1d1d;border-color:transparent">🔄 Change mode (start over)</button></div>`;
+    const ub=$("soloUnlockModeBtn");if(ub)ub.onclick=()=>{
+      if(!confirm("Start over with a new mode?\n\nThis ERASES your money, track progress and grind car — a new mode always starts fresh (a car built for free would break the grind).\nYour PARKED practice car (if any) is kept for Free Practice.\n\nContinue?"))return;
+      soloRunLocks.clear();   /* stale runs from the old lock can never pay out */
+      try{__LS.removeItem("ptc-solo-track");}catch(e){}
+      saveSoloCar(null);
+      const ss=soloSettings();delete ss.lock;ss.wallet=0;saveSoloSettings(ss);
+      curTrack=1;soloNextConfirm=false;soloSkipConfirm=false;
+      resetCarColors();resetCarPerf();
+      __soloPick=null;
+      refreshUI();renderSoloModeCard();
+      toast("🔄 Fresh start — pick a new game mode.");
+    };
+    if(note)note.textContent="";
+  }else{
+    h3.textContent="🎮 Your solo game mode";
+    choices.innerHTML=SOLO_MODES.map(m=>
+      `<button type="button" data-solomode="${m.id}" style="display:block;text-align:left;width:100%;margin:6px 0;${__soloPick===m.id?"border-color:#8b5cf6;box-shadow:0 0 0 1px #8b5cf6;":""}">
+        <b>${m.icon} ${m.name}</b><div class="small" style="margin:2px 0 0">${m.blurb}</div></button>`).join("")+
+      `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0">
+        <label class="small" style="margin:0" for="soloRewardInp"><b>$ reward per finish line</b></label>
+        <input type="number" id="soloRewardInp" min="0" step="1" value="${__soloRewardDraft}" style="width:80px;padding:6px;border:1px solid #475569;border-radius:8px;background:#0b1220;color:#e2e8f0">
+      </div>
+      <div style="margin-top:8px"><button id="soloLockBtn" class="primary">🔒 Lock in & start</button></div>`;
+    $$("#soloModeChoices [data-solomode]").forEach(b=>b.onclick=()=>{__soloPick=b.dataset.solomode;renderSoloModeCard();});
+    const lb=$("soloLockBtn");if(lb)lb.onclick=soloLockIn;
+    /* The reward input keeps its draft in module scope (inline on= handlers
+       can't reach inside this IIFE), so re-rendering the card never wipes
+       what the student typed. */
+    const ri=$("soloRewardInp");if(ri)ri.oninput=()=>{__soloRewardDraft=ri.value;};
+    if(note)note.innerHTML="Pick a mode, then lock it in. Racing stays <b>locked until you do</b>. Grind modes <b>park</b> your practice car (saved — you get it back in Free Practice) and start from stock with <b>$0</b>: earn everything.";
+  }
+}
+function soloLockIn(){
+  if(!__soloPick)return toast("Pick a game mode first.");
+  const mode=__soloPick;
+  const m=SOLO_MODES.find(x=>x.id===mode);
+  if(!m)return;
+  const ss=soloSettings();
+  let reward=25;
+  if(mode!=="free"){
+    const raw=parseFloat(String(__soloRewardDraft).trim());
+    if(!isFinite(raw)||raw<0||Math.floor(raw)!==raw)return toast("Reward must be a whole number of dollars (0 or more).");
+    reward=Math.floor(raw);
+  }
+  /* The rules the lock captures come from the Solo track rules card (the
+     student can pre-tune attempts/finish/skip there) — except Challenge
+     forces must-finish + lava on. */
+  const cfg={tracks:mode!=="free",
+    count:Math.max(1,Math.min(20,parseInt(ss.count)||7)),
+    attempts:Math.max(1,Math.min(100,parseInt(ss.attempts)||5)),
+    requireFinish:mode==="challenge"?true:(ss.requireFinish!==false),
+    allowSkip:ss.allowSkip===true,lava:mode==="challenge"};
+  /* Progress handling: track progress made under the SAME rules is kept;
+     different rules reset it (with a confirm first). */
+  const st=soloTrackStateAll();
+  const hasProgress=st&&st.tracks&&Object.keys(st.tracks).some(k=>{const t=st.tracks[k];return t&&(t.attempts||t.hasFinish);});
+  const sameRules=!hasProgress||(
+    (ss.tracks===true)===cfg.tracks&&
+    Math.max(1,Math.min(20,parseInt(ss.count)||7))===cfg.count&&
+    Math.max(1,Math.min(100,parseInt(ss.attempts)||5))===cfg.attempts&&
+    (ss.requireFinish!==false)===cfg.requireFinish&&
+    (ss.allowSkip===true)===cfg.allowSkip);
+  /* DECIDE EVERYTHING FIRST — no storage changes until every confirm passes,
+     so cancelling anywhere leaves the student exactly as they were. */
+  const wipeProgress=hasProgress&&!sameRules;
+  let parkCar=null;
+  if(mode!=="free"){
+    /* Grind economy: the practice car (ANY content — upgrades, paint, tuning,
+       consumables) is PARKED and saved — it comes back in Free Practice — and
+       the grind starts from a stock car with $0. */
+    const sc=soloCar();
+    if(sc){
+      if(!confirm("Grind modes start FRESH: your practice car is parked and saved (you get it back in Free Practice), your wallet starts at $0, and you build a new car with the money you earn. Continue?"))return;
+      parkCar=sc;
+    }
+  }
+  if(wipeProgress){
+    /* Different rules = fresh track campaign. Deleting progress is never silent. */
+    if(!confirm("Your saved track progress was made with different rules, so this mode starts it over. Continue?"))return;
+  }
+  /* Mutations — only past this point. */
+  if(wipeProgress){
+    try{__LS.removeItem("ptc-solo-track");}catch(e){}
+    __ptcBumpState();curTrack=1;soloNextConfirm=false;soloSkipConfirm=false;
+  }
+  if(parkCar){
+    try{__LS.setItem("ptc-solo-car-stash",JSON.stringify(parkCar));__ptcBumpState();}catch(e){}
+    saveSoloCar(null);
+    resetCarColors();
+    resetCarPerf();
+  }
+  if(mode==="free"){
+    /* Free Practice: bring the parked practice car back, if there is one. */
+    let stashed=null;
+    try{stashed=JSON.parse(__LS.getItem("ptc-solo-car-stash")||"null");}catch(e){}
+    if(stashed){
+      saveSoloCar(stashed);
+      try{__LS.removeItem("ptc-solo-car-stash");__ptcBumpState();}catch(e){}
+      toast("🚗 Your parked practice car is back — enjoy Free Practice!");
+    }
+  }
+  ss.lock={mode,reward:mode==="free"?0:reward,tracks:cfg.tracks,count:cfg.count,attempts:cfg.attempts,
+    requireFinish:cfg.requireFinish,allowSkip:cfg.allowSkip,lava:cfg.lava,lockedAt:Date.now()};
+  ss.wallet=0;
+  ss.tracks=cfg.tracks;ss.count=cfg.count;ss.attempts=cfg.attempts;
+  ss.requireFinish=cfg.requireFinish;ss.allowSkip=cfg.allowSkip;ss.lava=cfg.lava;
+  saveSoloSettings(ss);
+  /* Lava is a load-time game setting — flipping it needs the same reload the
+     lava button does. The lock itself is already persisted, so re-entering
+     solo practice shows it. */
+  const lavaNow=(function(){try{return __LS.getItem("ptc_lava")==="1";}catch(e){return false;}})();
+  if(cfg.lava!==lavaNow){
+    try{__LS.setItem("ptc_lava",cfg.lava?"1":"0");}catch(e){}
+    toast(`🔒 ${m.name} locked in${mode!=="free"?` — every finish pays $${reward}!`:""} Applying lava setting…`);
+    setTimeout(()=>location.reload(),1000);
+    return;
+  }
+  __soloPick=null;
+  refreshUI();renderSoloModeCard();
+  toast(mode==="free"?"🎮 Free Practice locked in — race anything, the Garage is free!":`💰 ${m.name} locked in — every finish pays $${reward}. Race to earn!`);
+}
 /* ---------------- 👤 ghost target: classmates vs own best run ---------------- */
 let ghostTarget="class";
 try{ghostTarget=__LS.getItem("ptc_ghostTarget")==="own"?"own":"class";}catch(e){}
@@ -3570,8 +3769,10 @@ function subscribeClass(){
 }
 
 function isRacingAllowed(){
-  /* Solo practice: race freely, no class checks. */
-  if(soloMode)return true;
+  /* Solo practice: race freely, no class checks — but ONLY once a game
+     mode is locked in (the mode card in the lobby). Until then the same
+     lock screen the classroom uses keeps the game locked. */
+  if(soloMode)return !!soloLock();
   if(!(me&&me.role==="student"&&classData&&S().classroomMode===true))return false;
   /* FUN MODE: questions are OFF — students can race any track freely. */
   if(funMode())return true;
@@ -3593,6 +3794,7 @@ function refreshUI(){
   $("leaveBtn").classList.toggle("hidden",!(me&&me.role==="student"&&classCode));
   // Solo banner + 📊 Results button (results open on demand now).
   $("soloBanner").classList.toggle("hidden",!soloMode);
+  $("soloModeCard").classList.toggle("hidden",!soloMode);
   $("resultsBtn").classList.toggle("hidden",!(me&&me.role==="student"&&classCode));
   $("resetScoresBtn").classList.toggle("hidden",!soloMode&&!(me&&me.role==="student"&&classCode));
   /* Hard reset + solo track rules card follow the same visibility rules. */
@@ -3675,11 +3877,14 @@ function refreshUI(){
    rules are off and nothing is uploaded. Joining a class leaves solo mode. */
 function renderSoloUI(){
   try{
+    const lk=soloLock();
     $("className").textContent="Solo practice";
-    $("lobbyStatus").textContent="Free racing — nothing recorded";
+    $("lobbyStatus").textContent=lk?(soloGrindOn()?"Money grind — every finish line pays":"Free racing — nothing recorded"):"Pick & lock a game mode to start racing";
     $("lockCard").classList.add("hidden");
-    $("goCard").classList.remove("hidden");
-    $("lobbyMode").textContent="🎮 Solo practice — race any track, no quizzes, no results recorded. Import a class car code above to drive your class car here."+(window.__PTC_LAVA?" 🌋 LAVA MODE — no walls; touch the grass and you reset!":"");
+    $("goCard").classList.toggle("hidden",!lk);   /* racing stays gated until a mode is locked in */
+    $("lobbyMode").textContent=lk
+      ?(soloGrindOn()?"🎮 Solo grind — race, earn money at every finish line, then upgrade your car in the Garage.":"🎮 Solo practice — race any track, no quizzes, no results recorded. Import a class car code above to drive your class car here.")
+      :"🎮 Solo practice — pick a game mode below to unlock racing.";+(window.__PTC_LAVA?" 🌋 LAVA MODE — no walls; touch the grass and you reset!":"");
     const slb=$("soloLavaBtn");if(slb)slb.textContent=window.__PTC_LAVA?"🌋 Lava mode: ON (tap to turn off)":"🌋 Lava mode: OFF";
     /* The imported solo car (if any) drives the physics; its paint applies
        (or the game default when the solo car has none — class paint never
@@ -3691,7 +3896,7 @@ function renderSoloUI(){
     const hasCar=sc&&Array.isArray(sc.upgrades)&&sc.upgrades.length;
     $("carPerfLine").innerHTML=hasCar
       ?`🚗 Solo car (imported): accel ×${cp.accel.toFixed(2)} · top ×${cp.top.toFixed(2)} · grip ×${cp.grip.toFixed(2)} · brakes ×${(cp.brake||1).toFixed(2)}${cp.steer>1.01?` · steering ×${cp.steer.toFixed(2)}`:""}${cp.turbo>1?` · <b>🚀 jet boost (hold SHIFT)</b>`:""}${cp.jump>0?` · <b>🚀 jump (SPACE)</b>`:""}<br><span class="small">♻️ Stock car button in the Solo card resets it.</span>`
-      :"🚗 Stock car — import a class car code in the Solo card to drive your class car here.";
+      :(soloGrindOn()?"🚗 Stock car — earn money and upgrade it in the Garage!":"🚗 Stock car — import a class car code in the Solo card to drive your class car here.");
     if(soloTracksOn())renderSoloTrackCard();
     else $("trackCard").classList.add("hidden");
     $("lbCard").classList.add("hidden");
@@ -3699,9 +3904,11 @@ function renderSoloUI(){
     /* Solo track rules card: only meaningful in solo practice. */
     const rcs=$("soloRulesCard");if(rcs)rcs.classList.remove("hidden");
     soloRulesSync();
-    /* The Garage is OPEN in solo practice — everything is free there. */
+    /* Game mode card: pick + lock a mode; shows the wallet in grind modes. */
+    renderSoloModeCard();
+    /* The Garage is OPEN in solo practice — free or wallet-priced per mode. */
     $("garageBtn").classList.remove("hidden");
-    $("garageBtn").textContent="🛒 Garage (free)";
+    $("garageBtn").textContent=soloGrindOn()?`🛒 Garage ($${soloWallet()})`:"🛒 Garage (free)";
     const hrb=$("hardResetBtn");if(hrb)hrb.classList.remove("hidden");
     syncPtcGhost();
   }catch(e){}
@@ -4352,7 +4559,7 @@ function renderPerfFamilies(){
       <div style="text-align:right;white-space:nowrap">
         ${maxed
           ?`<button class="primary" disabled>✅ MAX</button>`
-          :`<button data-buy="${next.id}" class="primary">${soloMode?"⬆ Upgrade · FREE":"⬆ Upgrade · "+shopCost(next)+" pts"}</button>`}
+          :`<button data-buy="${next.id}" class="primary">${soloMode?(soloGrindOn()?`⬆ Upgrade · $${shopCost(next)}`:"⬆ Upgrade · FREE"):"⬆ Upgrade · "+shopCost(next)+" pts"}</button>`}
       </div>
     </div></div>`;
   });
@@ -4363,10 +4570,15 @@ function renderShop(){
   $("shopPoints").textContent=`🛒 Garage — ${(meData&&meData.points)||0} pts`;
   $("shopNote").textContent=`Earn points: +${cfgNum(S().pointsPerCorrect,10)} per correct answer · +${cfgNum(S().pointsPerTrackComplete,50)} per completed track. Everything applies LIVE — paints, upgrades, and the 🎚️ tuning sliders. Own an upgrade to unlock its slider; ♻️ reset sells upgrades back for a full refund.`;
   if(soloMode){
-    /* SOLO: infinite points — the Garage is free, and everything saves to
-       this browser's solo car. */
-    $("shopPoints").textContent="🛒 Garage — ∞ FREE (solo practice)";
-    $("shopNote").textContent="Solo practice: everything here is FREE and applies LIVE. Upgrades, tuning and paint are saved to this browser's solo car (they never leak into a class).";
+    /* SOLO: the Garage runs on the mode's economy — free in Free Practice,
+       real wallet money in grind modes (earned by crossing finish lines). */
+    if(soloGrindOn()){
+      $("shopPoints").textContent=`🛒 Garage — $${soloWallet()}`;
+      $("shopNote").textContent=`💰 Grind mode: every finish line pays $${soloReward()}. Prices are real — spend wisely!`;
+    }else{
+      $("shopPoints").textContent="🛒 Garage — ∞ FREE (solo practice)";
+      $("shopNote").textContent="Solo practice: everything here is FREE and applies LIVE. Upgrades, tuning and paint are saved to this browser's solo car (they never leak into a class).";
+    }
     const sbk=$("shopBackBtn");if(sbk)sbk.textContent="← Back to solo practice";
   }
   const mine=myUpgrades(),cons=myConsumables();
@@ -4609,9 +4821,17 @@ async function buyUpgrade(id){
   const item=SHOP_CATALOG.find(x=>x.id===id);
   if(!item)return;
   if(soloMode){
-    /* SOLO: everything is FREE — purchases go straight into this
-       browser's solo car (localStorage), never to Firestore. */
+    /* SOLO: purchases go straight into this browser's solo car
+       (localStorage), never to Firestore. FREE in Free Practice — in grind
+       modes they cost real wallet money (checked and charged here). */
     if(!shopOpen())return toast("The Garage is closed.");
+    const cost=soloGrindOn()?shopCost(item):0;
+    if(cost>0&&soloWallet()<cost)return toast(`💰 Not enough money — ${item.name} costs $${cost} and you have $${soloWallet()}. Cross more finish lines!`);
+    /* Same ownership + prerequisite rules as the class shop. */
+    const pre=soloCar()||{};
+    const owned=Array.isArray(pre.upgrades)?pre.upgrades:[];
+    if(owned.includes(id)&&item.cat!=="consumable")return toast("Already owned.");
+    if(item.req&&!owned.includes(item.req))return toast("Buy "+((SHOP_CATALOG.find(x=>x.id===item.req)||{}).name||"the earlier upgrade")+" first!");
     const sc=soloCar()||{};
     if(item.cat==="consumable"){
       sc.consumables=Object.assign({},sc.consumables||{});
@@ -4629,9 +4849,10 @@ async function buyUpgrade(id){
     saveSoloCar(sc);
     if(item.cat==="paint"&&Array.isArray(item.colors))applyPaintsNow(item.colors);
     resetCarPerf();
+    if(cost>0){const ss=soloSettings();ss.wallet=soloWallet()-cost;saveSoloSettings(ss);renderSoloModeCard();}
     refreshUI();
     renderShop();
-    toast("✅ Added to your solo car — the Garage is free in solo practice!");
+    toast(cost>0?`✅ Bought ${item.name} for $${cost} — wallet: $${soloWallet()}.`:"✅ Added to your solo car — the Garage is free in solo practice!");
     return;
   }
   if(!studentRef)return;
@@ -5823,11 +6044,23 @@ async function saveMyGhost(p,myClass){
    attempts (the track gets locked on the spot and racing is blocked). */
 async function countAttemptStart(){
   if(soloMode){
+    /* No locked game mode yet — racing is gated. isRacingAllowed() shows the
+       classroom lock screen for this; this backstop ends any run that
+       somehow started (e.g. the lock engaging mid-countdown). */
+    if(!soloLock())return false;
     /* SOLO TRACK RULES: count the attempt locally, against the track the
        run STARTED on (advancing mid-run can't move the credit). The track
        "completes" the same way the class does it — but racing is NEVER
        locked in solo (there are no questions to re-unlock with), so you
        can always keep racing to cross the finish line. */
+    /* Economy snapshot at run START, keyed by runId: a run only earns
+       progress/money under the lock it STARTED under — a mode change
+       mid-run can never pay a stale run. */
+    const lk=soloLock();
+    if(RACE.runId!=null){
+      if(soloRunLocks.size>60){const k0=soloRunLocks.keys().next().value;soloRunLocks.delete(k0);}   // tiny LRU cap
+      soloRunLocks.set(RACE.runId,{lockId:lk.lockedAt||0,mode:lk.mode});
+    }
     if(soloTracksOn()){
       RACE.soloTrack=curTrack;
       const st=soloTrackStateAll();
@@ -6181,7 +6414,15 @@ async function logResult(t,endedBy,runId){
   /* SOLO TRACK RULES: a solo run only updates the local track progress —
      best time and the finish flag. Nothing is recorded anywhere else. */
   if(soloMode){
-    if(soloTracksOn()&&endedBy==="finish"){
+    /* The lock this run STARTED under (keyed by runId) — both the progress
+       update and the payout below only apply when that lock is still the
+       active one (identity = lockedAt). */
+    const rid0=runId!=null?runId:RACE.runId;
+    const rl=rid0!=null?soloRunLocks.get(rid0):null;
+    const lockNow=soloLock();
+    const sameLock=!!(rl&&lockNow&&(lockNow.lockedAt||0)===rl.lockId);
+    if(rid0!=null)soloRunLocks.delete(rid0);   // run over — drop its snapshot
+    if(soloTracksOn()&&endedBy==="finish"&&sameLock){
       /* Credit the finish to the track the run STARTED on. */
       const k=RACE.soloTrack||curTrack;
       const st=soloTrackStateAll();
@@ -6194,6 +6435,19 @@ async function logResult(t,endedBy,runId){
       saveSoloTrackState(st);
       if(k===curTrack&&trackDone())soloTrackComplete(k);
       refreshUI();
+    }
+    /* 💰 GRIND MODE PAYOUT: every run that ends by CROSSING THE FINISH LINE
+       pays the locked reward — once per run (the runId receipt prevents any
+       double payout). Restarts, skips and attempt exhaustion never pay. */
+    if(endedBy==="finish"&&sameLock&&soloGrindOn()&&rl&&(rl.mode==="grind"||rl.mode==="challenge")){
+      const rid=runId!=null?runId:RACE.runId;
+      if(rid!=null&&!soloPaidRuns.has(rid)){
+        soloPaidRuns.add(rid);
+        const amt=soloReward();
+        soloAddMoney(amt);
+        toast(`💰 +$${amt} — finish bonus! Wallet: $${soloWallet()}`);
+        renderSoloModeCard();
+      }
     }
     return{saved:true};   /* solo progress is LOCAL — it persisted */
   }
