@@ -1285,8 +1285,9 @@ input[type="text"]:focus-visible {
   </div>
   <div class="card hidden" id="soloDailyCard">
     <h3>📅 Solo daily leaderboard</h3>
-    <p class="small">Today's solo runs only — resets at midnight. Runs rank in two brackets: 🔒 <b>Unmodded</b> (stock car) and 🔧 <b>Modded</b> (upgraded cars). The 🔒 Unmodded toggle in the Solo practice card decides which bracket your run counts in.</p>
+    <p class="small">Every finished solo run today — <b>shared live with all players</b>. Resets at midnight. Runs rank in two brackets: 🔒 <b>Unmodded</b> (stock car) and 🔧 <b>Modded</b> (upgraded cars). The 🔒 Unmodded toggle in the Solo practice card decides which bracket your run counts in.</p>
     <div id="soloDailyList" class="small">No finished runs yet today.</div>
+    <div class="small" style="margin-top:8px">Your board name: <b id="soloDailyName" style="color:#fff">—</b> <button class="linklike" id="soloDailyNameEdit" title="Change your name on the shared board">✏️ change</button></div>
   </div>
   <div class="card hidden" id="trackCard">
     <h3 id="trackTitle">Tracks</h3>
@@ -5938,14 +5939,65 @@ function promptSoloReplaySave(runId,t,endedBy,snapCourseNumRun,snapUnmoddedRun,s
   }catch(e){}
 }
 /* ================= 📅 SOLO DAILY LEADERBOARD =================
-   Today's solo runs only — resets at local midnight. Modded and unmodded
+   Today's solo runs only — resets at midnight. Modded and unmodded
    runs rank in separate brackets (the 🔒 Unmodded toggle decides which
    bracket a run counts in). Works like the class leaderboard: every
-   finish is ranked by time, best time per track. Local to this browser. */
+   finish is ranked by time, best time per track.
+   🌐 SHARED WITH EVERYONE: finishes are published to Firestore under
+   soloDaily/{day} so every player sees the same board. Every browser
+   is signed in anonymously on load (authReady), so every player can
+   read + write their own entries. If the shared board can't be reached
+   (offline / Firestore rules) the card silently falls back to showing
+   this browser's runs only. */
 function soloDailyKey(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 function soloDailyLb(){
   try{const v=JSON.parse(__LS.getItem("ptc-solo-daily-lb")||"null");if(v&&v.day===soloDailyKey())return v;}catch(e){}
   return {day:soloDailyKey(),runs:[]};
+}
+/* 🏷️ Solo players aren't in a class, so they have no student name — give the
+   shared board a persistent display name (editable via ✏️ in the card). */
+function soloDisplayName(){
+  try{
+    let n=__LS.getItem("ptc-solo-name");
+    if(n)return n;
+    let tail="";
+    try{const u=auth.currentUser;if(u&&u.uid)tail=String(u.uid).slice(-4);}catch(e){}
+    if(!tail)tail=String(Math.floor(1000+Math.random()*9000));
+    n="Racer-"+tail;
+    try{__LS.setItem("ptc-solo-name",n);}catch(e2){}
+    return n;
+  }catch(e){return "Racer";}
+}
+/* 🌐 shared board state (today's entries pulled from Firestore) */
+let soloDailyShared={day:null,runs:[],ok:false,at:0,busy:false};
+function soloDailySharedRef(){return db.collection("soloDaily").doc(soloDailyKey()).collection("entries");}
+async function soloDailySharedLoad(force){
+  try{
+    if(soloDailyShared.busy)return;
+    if(!force&&soloDailyShared.ok&&soloDailyShared.day===soloDailyKey()&&Date.now()-soloDailyShared.at<30000)return;
+    const u=auth.currentUser;if(!u)return;      /* not signed in (yet) → local only */
+    soloDailyShared.busy=true;
+    const snap=await soloDailySharedRef().get();
+    const runs=[];
+    snap.forEach(d=>{const r=d.data();if(r&&r.bracket&&r.track!=null&&r.timeMs!=null)runs.push(r);});
+    soloDailyShared={day:soloDailyKey(),runs,ok:true,at:Date.now(),busy:false};
+    renderSoloDailyLb();
+  }catch(e){soloDailyShared.busy=false;}
+}
+/* 📤 publish one finished run to the shared board (best time per
+   bracket+track wins — same rule as the local board). */
+async function soloDailySharedUpsert(run){
+  try{
+    const u=auth.currentUser;if(!u)return;
+    const ref=soloDailySharedRef().doc(u.uid+"_"+run.bracket+"_"+run.track);
+    let cur=null;
+    try{const s=await ref.get();cur=s.data()||null;}catch(e2){}
+    if(cur&&cur.timeMs!=null&&cur.timeMs<=run.timeMs)return;   /* existing entry is faster */
+    await ref.set({uid:u.uid,name:soloDisplayName(),bracket:run.bracket,track:run.track,
+      trackName:run.trackName||("Track "+run.track),timeMs:run.timeMs,
+      timeText:run.timeText,ts:run.ts||Date.now()});
+    soloDailySharedLoad(true);
+  }catch(e){}
 }
 function soloDailyLbAdd(run){
   try{
@@ -5957,26 +6009,61 @@ function soloDailyLbAdd(run){
     for(const r of v.runs){const k=r.bracket+"|"+r.track;if(!best[k]||r.timeMs<best[k].timeMs)best[k]=r;}
     v.runs=Object.values(best).sort((a,b)=>a.timeMs-b.timeMs).slice(0,60);
     try{__LS.setItem("ptc-solo-daily-lb",JSON.stringify(v));}catch(e2){}
+    /* 🌐 publish to the shared board (async, silent — local board already
+       updated above so a failed write can't lose the run). */
+    soloDailySharedUpsert(run).catch(()=>{});
   }catch(e){}
 }
 function renderSoloDailyLb(){
   const el=$("soloDailyList");if(!el)return;
   try{
-    const v=soloDailyLb();
-    if(!v.runs.length){el.textContent="No finished runs yet today — cross a finish line to get on the board!";return;}
+    const nameEl=$("soloDailyName");if(nameEl)nameEl.textContent=soloDisplayName();
+    /* 🌐 merge the shared board with this browser's local runs: shared
+       entries + local-only rows, best time per bracket+track wins. */
+    const local=soloDailyLb().runs;
+    const shared=(soloDailyShared.ok&&soloDailyShared.day===soloDailyKey())?soloDailyShared.runs:[];
+    const best={};
+    const put=r=>{if(!r)return;const k=r.bracket+"|"+r.track;if(!best[k]||r.timeMs<best[k].timeMs)best[k]=r;};
+    shared.forEach(put);local.forEach(put);
+    const rows=Object.values(best);
+    let myUid=null;try{const u=auth.currentUser;if(u)myUid=u.uid;}catch(e){}
+    const status=soloDailyShared.ok
+      ? `🌐 <b style="color:var(--good)">Shared with all players</b> — ${shared.length} entr${shared.length===1?"y":"ies"} today`
+      : (soloDailyShared.tried
+        ? `⚠️ Shared board unavailable right now — showing this browser's runs only.`
+        : `🌐 Shared with all players — loading…`);
+    if(!rows.length){el.innerHTML=status+"<br>No finished runs yet today — cross a finish line to get on the board!";soloDailySharedLoad();return;}
     const mk=(br,label)=>{
-      const rows=v.runs.filter(r=>r.bracket===br).sort((a,b)=>a.timeMs-b.timeMs);
-      if(!rows.length)return "";
+      const rws=rows.filter(r=>r.bracket===br).sort((a,b)=>a.timeMs-b.timeMs);
+      if(!rws.length)return "";
       return `<b style="color:#fff">${label}</b>`+
         `<table style="width:100%;border-collapse:collapse;margin:4px 0 12px">`+
-        `<tr style="color:var(--muted)"><td style="padding:2px 6px">#</td><td style="padding:2px 6px">Track</td><td style="padding:2px 6px">Time</td><td style="padding:2px 6px">When</td></tr>`+
-        rows.map((r,i)=>`<tr><td style="padding:2px 6px">${i+1}</td><td style="padding:2px 6px">${esc(r.trackName||"—")}</td><td style="padding:2px 6px"><b style="color:#fff">${esc(r.timeText||fmtTimeMs(r.timeMs))}</b></td><td style="padding:2px 6px">${whenish(r.ts)}</td></tr>`).join("")+
+        `<tr style="color:var(--muted)"><td style="padding:2px 6px">#</td><td style="padding:2px 6px">Player</td><td style="padding:2px 6px">Track</td><td style="padding:2px 6px">Time</td><td style="padding:2px 6px">When</td></tr>`+
+        rws.map((r,i)=>`<tr><td style="padding:2px 6px">${i+1}</td><td style="padding:2px 6px">${esc(r.name||"Racer")}${r.uid&&r.uid===myUid?" <b style=\"color:var(--good)\">(you)</b>":""}</td><td style="padding:2px 6px">${esc(r.trackName||("Track "+r.track))}</td><td style="padding:2px 6px"><b style="color:#fff">${esc(r.timeText||fmtTimeMs(r.timeMs))}</b></td><td style="padding:2px 6px">${whenish(r.ts)}</td></tr>`).join("")+
         `</table>`;
     };
-    el.innerHTML=mk("unmodded","🔒 Unmodded bracket — stock car only")+
+    el.innerHTML=status+"<br>"+
+      mk("unmodded","🔒 Unmodded bracket — stock car only")+
       mk("modded","🔧 Modded bracket — upgraded cars");
+    /* refresh the shared view (debounced inside) so the board fills in
+       once Firestore answers, and again on later renders. */
+    if(!soloDailyShared.ok)soloDailyShared.tried=true;
+    soloDailySharedLoad();
   }catch(e){}
 }
+/* ✏️ board-name editor */
+try{
+  const nb=$("soloDailyNameEdit");
+  if(nb)nb.onclick=()=>{
+    const cur=soloDisplayName();
+    const n=(window.prompt("Your name on the shared daily board:",cur)||"").trim().slice(0,20);
+    if(n){
+      try{__LS.setItem("ptc-solo-name",n);}catch(e){}
+      toast("✅ Board name saved: "+n);
+      renderSoloDailyLb();
+    }
+  };
+}catch(e){}
 /* 🎥 My Replays floating button + library modal. */
 function renderReplayBtn(){
   try{
