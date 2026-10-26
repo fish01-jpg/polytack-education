@@ -160,7 +160,9 @@ color:var(--text);line-height:1.6;display:none;pointer-events:none;max-width:230
 #raceHud .good{color:var(--good)}
 /* Bottom-left in-race HUD: jet/jump ability readiness. Kept separate from
    #raceHud (top-center) so the attempt counter never overlaps. */
-#powerHud{position:fixed;left:14px;bottom:14px;z-index:1000000;background:#0f172aee;
+/* Lifted above the floating 🎥 Replays / 👤 Profile buttons (they occupy
+   the bottom-left up to ~90px) so it can never cover them. */
+#powerHud{position:fixed;left:14px;bottom:100px;z-index:1000000;background:#0f172aee;
 border:1px solid var(--border);border-radius:12px;padding:8px 12px;font-size:12px;
 color:var(--text);line-height:1.6;display:none;pointer-events:none;max-width:230px}
 #powerHud.show{display:block}
@@ -1221,7 +1223,7 @@ input[type="text"]:focus-visible {
     <div class="field"><label for="tEmail">Email</label><input id="tEmail" type="email" autocomplete="username"></div>
     <div class="field"><label for="tPass">Password</label><input id="tPass" type="password" autocomplete="current-password"></div>
     <div class="row"><button id="tLoginBtn" class="primary">Log in</button><button id="tRegisterBtn">Register</button></div>
-    <div class="small">Need the full dashboard? Open <button id="openDashLink" class="linklike">teacher-dashboard.html</button> in a new tab.</div>
+    <div class="small">Need the full dashboard? Open <button id="openDashLink" class="linklike">teacher.html</button> in a new tab.</div>
   </div>
 </main>
 
@@ -1243,6 +1245,10 @@ input[type="text"]:focus-visible {
     <h3>🎮 Solo practice</h3>
     <p class="small">Free racing, no teacher code needed: quizzes, points and recording are off, and every track is open. Turn on the 🎯 Solo track rules below to play with the classroom track system (tracks unlock in order). Use it to practice — join a class to play the real tournament.</p>
     <p class="small" style="margin-bottom:6px">📥 <b>Import your class car:</b> paste a car code (PTCAR1-…) below and everything you built in a class — upgrades, tuning sliders and paint — becomes your solo car. Classes can't import; solo cars never leak back into a class.</p>
+    <div class="row" style="align-items:center;gap:8px;margin:8px 0;flex-wrap:wrap">
+      <input type="checkbox" id="soloUnmoddedChk" style="width:18px;height:18px;cursor:pointer">
+      <label for="soloUnmoddedChk" class="small" style="margin:0;cursor:pointer"><b>🔒 Unmodded</b> — stock car only: upgrades, tuning, abilities and imports are locked. Solo runs count in the <b>unmodded</b> daily leaderboard bracket.</label>
+    </div>
     <textarea id="soloImportBox" class="small" style="width:100%;min-height:44px;box-sizing:border-box;resize:vertical" placeholder="Paste a PTCAR1- car code here…"></textarea>
     <div class="footer">
       <button id="soloImportBtn" class="primary">📥 Import car</button>
@@ -1276,6 +1282,11 @@ input[type="text"]:focus-visible {
       <input type="checkbox" id="soloSkipChk" style="width:18px;height:18px">
     </div>
     <div class="footer"><button id="soloRulesResetBtn">♻️ Reset track progress</button></div>
+  </div>
+  <div class="card hidden" id="soloDailyCard">
+    <h3>📅 Solo daily leaderboard</h3>
+    <p class="small">Today's solo runs only — resets at midnight. Runs rank in two brackets: 🔒 <b>Unmodded</b> (stock car) and 🔧 <b>Modded</b> (upgraded cars). The 🔒 Unmodded toggle in the Solo practice card decides which bracket your run counts in.</p>
+    <div id="soloDailyList" class="small">No finished runs yet today.</div>
   </div>
   <div class="card hidden" id="trackCard">
     <h3 id="trackTitle">Tracks</h3>
@@ -1401,7 +1412,7 @@ input[type="text"]:focus-visible {
   <div class="card">
     <div class="field"><label for="newClassName">New class name</label><input id="newClassName" maxlength="60" placeholder="e.g. 3rd Hour Chemistry"></div>
     <button id="createClassBtn" class="primary">Create class</button>
-    <div class="small">Add questions from the full dashboard (teacher-dashboard.html).</div>
+    <div class="small">Add questions from the full dashboard (teacher.html).</div>
   </div>
   <div id="teacherClasses"></div>
   <div class="footer"><button id="openDashBtn">Open full dashboard</button><button id="tLogoutBtn">Log out</button></div>
@@ -1738,6 +1749,16 @@ let __carPerfMemo={ver:-1,at:0,val:null};
 function carPerf(){
   const __now=performance.now();
   if(__carPerfMemo.ver===__PTC_STATE_VER&&__carPerfMemo.val&&__now-__carPerfMemo.at<250)return __carPerfMemo.val;
+  /* 🔒 UNMODDED (solo): the stock car is the ONLY car — upgrades, tuning,
+     abilities and the imported car are all ignored. Toggling it bumps the
+     state version, so the memo below can never serve a stale car. */
+  if(soloUnmoddedOn()){
+    const __out={accel:1,top:1,grip:1,brake:1,steer:1,driftKeep:0.5,turbo:1,jump:0,wallDrift:0,
+      airG:1.6,mass:1,weightDist:1,downforce:1,suspStiff:1,suspDamp:1,steerSpeed:1.1,stability:1.2,
+      driftTune:0.5,airGTune:1.6,trans:1,weightRed:1,suspUp:1,steerUp:1};
+    __carPerfMemo={ver:__PTC_STATE_VER,at:__now,val:__out};
+    return __out;
+  }
   const s=carBaseMults();   // class settings, or the imported car's packed base
   const eLvl=appliedLevel("engine"),tLvl=appliedLevel("tires"),aLvl=appliedLevel("aero"),bLvl=appliedLevel("brakes");
   /* HANDLING > SPEED BY DESIGN: grip and steering grow faster (+15%/+5% per
@@ -3237,6 +3258,8 @@ $("soloImportBtn").onclick=()=>{
   /* Grind modes are a closed economy — importing a fully-upgraded car would
      defeat the whole grind, so the import dock is free-practice only. */
   if(soloGrindOn())return toast("🔒 Car import is off in grind modes — build your car with money you earn!");
+  /* 🔒 UNMODDED: the stock car is the only car — no importing either. */
+  if(soloUnmoddedOn())return toast("🔒 Unmodded mode is ON — the stock car is the only car. Turn it off in the Solo card to import.");
   const r=importCarCode($("soloImportBox").value);
   if(!r.ok)return toast(r.msg);
   if(!applySoloCar(r.pack))return toast("Importing only works in Solo practice — leave your class first.");
@@ -3269,8 +3292,29 @@ function soloRulesSync(){
   const ai=$("soloAttInp");if(ai){ai.value=Math.max(1,Math.min(100,parseInt(ss.attempts)||5));ai.disabled=lk;}
   const fc=$("soloFinChk");if(fc){fc.checked=ss.requireFinish!==false;fc.disabled=lk;}
   const sc=$("soloSkipChk");if(sc){sc.checked=ss.allowSkip===true;sc.disabled=lk;}
+  const um=$("soloUnmoddedChk");if(um)um.checked=ss.unmodded===true;   /* free toggle — never frozen */
 }
 function soloLockedToast(){toast("🔒 Your game mode is locked in — its rules can't be changed while you play. Use 🔄 Change mode in the Game mode card to start over.");}
+/* 🔒 UNMODDED toggle: freezes the player to the STOCK CAR (enforced in
+   carPerf — upgrades, tuning, abilities and imports are all ignored) and
+   decides which bracket solo runs rank in on the daily leaderboard. It's
+   a free toggle (unlike the track rules) so players can move between the
+   modded and unmodded brackets. */
+$("soloUnmoddedChk").onchange=e=>{
+  /* No switching mid-race: the run's bracket is snapshotted at START, so a
+     mid-run flip could otherwise mislabel the finish (fast car, unmodded
+     credit). Finish (or restart) the run first. */
+  if(RACE.phase==="running"){
+    e.target.checked=soloSettings().unmodded===true;
+    return toast("🔒 Finish your run first — the unmodded toggle can't change mid-race.");
+  }
+  const ss=soloSettings();ss.unmodded=e.target.checked;saveSoloSettings(ss);
+  renderSoloDailyLb&&renderSoloDailyLb();
+  refreshUI();
+  toast(e.target.checked
+    ?"🔒 Unmodded ON — stock car only. Upgrades, tuning and abilities are locked; runs count in the UNMODDED daily bracket."
+    :"🔒 Unmodded OFF — your car and upgrades apply again; runs count in the MODDED daily bracket.");
+};
 $("soloTracksChk").onchange=e=>{
   if(soloLock()){e.target.checked=soloSettings().tracks===true;return soloLockedToast();}
   const ss=soloSettings();ss.tracks=e.target.checked;saveSoloSettings(ss);
@@ -3733,8 +3777,8 @@ auth.onAuthStateChanged(u=>{
   // anything else (anonymous student, logout) clears it.
   pendingTeacher=(u&&!u.isAnonymous)?{teacherId:u.uid,email:u.email}:null;
 });
-$("openDashLink").onclick=()=>window.open("teacher-dashboard.html");
-$("openDashBtn").onclick=()=>window.open("teacher-dashboard.html");
+$("openDashLink").onclick=()=>window.open("teacher.html");
+$("openDashBtn").onclick=()=>window.open("teacher.html");
 
 /* Students sign in anonymously so the Firestore rules can tell a real
    class member's device from a random stranger. Teachers use email/password.
@@ -3768,7 +3812,7 @@ async function loadTeacherClasses(){
       try{await db.collection("classes").doc(b.dataset.code).update({"settings.classroomMode":b.dataset.on==="1"?false:true});loadTeacherClasses();}
       catch(e){toast("Could not update: "+e.message);}
     });
-    $$("#teacherClasses .openDash2").forEach(b=>b.onclick=()=>window.open("teacher-dashboard.html"));
+    $$("#teacherClasses .openDash2").forEach(b=>b.onclick=()=>window.open("teacher.html"));
   }catch(e){toast("Could not load classes: "+e.message);}
 }
 
@@ -4094,6 +4138,8 @@ function refreshUI(){
     view("lobbyView");
     /* Class mode: make sure the cards hidden by solo mode come back. */
     ["lbCard","pickCard"].forEach(id=>$(id).classList.remove("hidden"));
+    /* 📅 Solo daily leaderboard is solo-only — hide it in class mode. */
+    const dlhc=$("soloDailyCard");if(dlhc)dlhc.classList.add("hidden");
     $("garageBtn").classList.remove("hidden");
     $("className").textContent=classData.name||classCode;
     const on=isRacingAllowed();
@@ -4165,14 +4211,22 @@ function renderSoloUI(){
     if(sc&&Array.isArray(sc.carColors)&&sc.carColors.length>=4)applyPaintsNow(sc.carColors);
     else resetCarColors();   // no solo paint saved -> game default, class paint never leaks into solo
     const cp=carPerf();
+    /* 🔒 UNMODDED: the car line must say so — the stock car is the only car. */
+    if(soloUnmoddedOn())
+      $("carPerfLine").innerHTML="🔒 <b>Unmodded mode</b> — stock car only: upgrades, tuning, abilities and imports are locked. Runs count in the <b>unmodded</b> daily bracket.";
+    else{
     const hasCar=sc&&Array.isArray(sc.upgrades)&&sc.upgrades.length;
     $("carPerfLine").innerHTML=hasCar
       ?`🚗 Solo car (imported): accel ×${cp.accel.toFixed(2)} · top ×${cp.top.toFixed(2)} · grip ×${cp.grip.toFixed(2)} · brakes ×${(cp.brake||1).toFixed(2)}${cp.steer>1.01?` · steering ×${cp.steer.toFixed(2)}`:""}${cp.turbo>1?` · <b>🚀 jet boost (hold SHIFT)</b>`:""}${cp.jump>0?` · <b>🚀 jump (SPACE)</b>`:""}<br><span class="small">♻️ Stock car button in the Solo card resets it.</span>`
       :(soloGrindOn()?"🚗 Stock car — earn money and upgrade it in the Garage!":"🚗 Stock car — import a class car code in the Solo card to drive your class car here.");
+    }
     if(soloTracksOn())renderSoloTrackCard();
     else $("trackCard").classList.add("hidden");
     $("lbCard").classList.add("hidden");
     $("pickCard").classList.add("hidden");
+    /* 📅 Daily leaderboard: today's solo runs, modded + unmodded brackets. */
+    const dlb=$("soloDailyCard");if(dlb)dlb.classList.remove("hidden");
+    renderSoloDailyLb();
     /* Solo track rules card: only meaningful in solo practice. */
     const rcs=$("soloRulesCard");if(rcs)rcs.classList.remove("hidden");
     soloRulesSync();
@@ -4963,7 +5017,7 @@ async function viewStudentReplay(name,ts){
     stopReplayPlayer();
     try{
       const recs=await idbReplays();
-      if(!recs.length)return toast("No replays yet — press Y during a run to record one (it saves even if you don't finish).");
+      if(!recs.length)return toast("No replays yet — every solo race is recorded and you're asked to save it at the finish line; press Y during a run to force-save one.");
       recs.sort((a,b)=>(b.ts||0)-(a.ts||0));
       /* strict: a requested-but-missing historical recording is NOT silently
          replaced with another run. */
@@ -5345,6 +5399,10 @@ async function buyUpgrade(id){
   const item=SHOP_CATALOG.find(x=>x.id===id);
   if(!item)return;
   if(soloMode){
+    /* 🔒 UNMODDED: upgrades and tuning are locked — the stock car is the
+       only car. Paint stays allowed (cosmetic only). */
+    if(soloUnmoddedOn()&&item.cat!=="paint")
+      return toast("🔒 Unmodded mode is ON — the stock car is the only car. Turn it off in the Solo card to upgrade.");
     /* SOLO: purchases go straight into this browser's solo car
        (localStorage), never to Firestore. FREE in Free Practice — in grind
        modes they cost real wallet money (checked and charged here). */
@@ -5486,19 +5544,21 @@ setInterval(()=>{
         }
         RACE.phase="running";RACE.runId++;RACE.pid=ptcPlayerId();
         ptcNoteTrackId();   // track is LOADED now — learn its engine fingerprint
-        /* PERF: in solo practice NOTHING is ever uploaded — logResult's solo
-           branch never reads the video, the flipbook or the ghost recording —
-           so a 30fps MediaRecorder + a JPEG flipbook ran for NOTHING there,
-           a constant lag source. Only a CLASS run records evidence. */
+        /* PERF note is HISTORY: solo runs now record too (the finish-line
+           save prompt + the solo ghost need them) — video first, flipbook
+           sparse, same as class mode. */
         if(!soloMode){
           startReplayCapture();
           jetRefill();startVideoCapture();
           startGhostRec();
-          /* video is the primary replay — the flipbook frames are only the
-             fallback, so grab them sparsely instead of every 400ms. */
           if(vidCap&&replayCap)replayCap.interval=1200;
         }else{
           jetRefill();
+          closeSoloReplayPrompt();
+          startReplayCapture();
+          startVideoCapture();
+          startGhostRec();
+          if(vidCap&&replayCap)replayCap.interval=1200;
         }
         syncGhostSub();
         countAttemptStart().then(ok=>{if(!ok)RACE.phase="ended";});
@@ -5507,8 +5567,8 @@ setInterval(()=>{
       }
       RACE.phase="running";RACE.runId++;RACE.pid=ptcPlayerId();
       ptcNoteTrackId();   // track is LOADED now — learn its engine fingerprint
-      /* PERF: same as the tracks-mode branch above — solo practice never
-         uploads, so recording a 30fps video + flipbook there is pure waste. */
+      /* Solo runs now record too (the finish-line save prompt + the solo
+         ghost need them): video first, flipbook sparse — same as class. */
       if(!soloMode){
         startReplayCapture();
         jetRefill();startVideoCapture();
@@ -5518,6 +5578,25 @@ setInterval(()=>{
         if(vidCap&&replayCap)replayCap.interval=1200;
       }else{
         jetRefill();
+        /* an unanswered replay-save prompt from the previous run is discarded
+           the moment a new run starts (delete-unless-saved). */
+        closeSoloReplayPrompt();
+        /* 🎯 SOLO RUN REGISTRATION: count the attempt + snapshot the lock
+           this run STARTED under — that snapshot is what lets a FINISH
+           credit progress, save the ghost and rank on the daily board.
+           The tracks branch above already did this when the solo track
+           rules are ON. */
+        if(!isTracksMode())countAttemptStart().then(ok=>{if(!ok)RACE.phase="ended";});
+        /* 🎥 SOLO REPLAYS: every solo race is recorded (video first, flipbook
+           fallback) — at the finish line the player is asked whether to
+           save it; anything not saved is deleted. */
+        startReplayCapture();
+        startVideoCapture();
+        /* 👻 SOLO GHOST: the best-run ghost replays POSITION samples — they
+           were never recorded in solo, so the ghost could never appear.
+           Record them here too (same run lifecycle as class mode). */
+        startGhostRec();
+        if(vidCap&&replayCap)replayCap.interval=1200;
       }
       syncGhostSub();
       if(S().questionMode==="race-progress"){
@@ -5680,8 +5759,9 @@ function startManualReplay(){
     if(abilityInputBlocked())return;
     if(RACE.phase!=="running")return toast("Start a run first — then press Y to record its replay.");
     if(manualCap&&manualCap.runId===RACE.runId)return toast("📼 Already recording this run — it saves automatically when the run ends.");
-    /* Solo mode skips the automatic recorders (nothing uploads), so the
-       manual capture starts its own video + flipbook on demand. */
+    /* Solo runs now record automatically (video + flipbook at run start);
+       the manual capture just marks this run as KEEP — it force-saves at
+       the end even without crossing the finish line. */
     if(!vidCap){try{startVideoCapture();}catch(e){}}
     if(!vidCap){try{startReplayCapture();}catch(e){}}
     if(!vidCap&&!replayCap)return toast("Recording isn't available in this browser.");
@@ -5707,6 +5787,27 @@ async function idbReplays(){const db=await replayDB();return new Promise((res,re
 async function idbDelReplay(id){const db=await replayDB();return new Promise(res=>{const tx=db.transaction("replays","readwrite");tx.objectStore("replays").delete(id);tx.oncomplete=()=>res();tx.onerror=()=>res();});}
 /* Called from logResult (any end kind, any mode) when a manual capture is
    active for the ending run. */
+/* The ACTUAL course a solo run happened on: the game menu's track number
+   when known, the custom label for teacher tracks, and only as a last
+   resort the solo progression number (curTrack) — which is NOT the game
+   track (it's just how far the player is in the solo track ladder), so it
+   must never be the default label. */
+function soloCourseNum(){
+  try{if(typeof gameTrack==="number"&&gameTrack>=1)return gameTrack;}catch(e){}
+  return (RACE&&RACE.soloTrack)||curTrack;
+}
+function soloCourseLabel(){
+  try{
+    if(typeof gameTrack==="number"&&gameTrack>=1)return "Track "+gameTrack;
+    if(gameTrackLabel&&String(gameTrackLabel).startsWith("custom:"))
+      return "Custom: "+String(gameTrackLabel).slice(7);
+  }catch(e){}
+  return trackName(curTrack);
+}
+/* 🔒 UNMODDED: when the solo unmodded toggle is ON, the player drives the
+   STOCK CAR — upgrades, tuning, abilities and the imported class car are
+   all ignored. Runs count in the daily leaderboard's unmodded bracket. */
+function soloUnmoddedOn(){try{return !!(soloMode&&soloSettings().unmodded===true);}catch(e){return false;}}
 async function saveManualReplay(mc,t,endedBy){
   try{
     if(!mc||mc.saved)return;
@@ -5723,7 +5824,15 @@ async function saveManualReplay(mc,t,endedBy){
     /* run METADATA is snapshotted here too: mode/track can change during
        the video wait below (restart, track switch) and must not mislabel
        this replay. */
-    const snapMode=soloMode,snapTrack=curTrack,snapTrackName=trackName(curTrack),snapTs=Date.now();
+    const snapMode=soloMode,snapTs=Date.now();
+    /* 🎯 COURSE LABEL: the replay library shows the track a run actually
+       happened on. In solo, curTrack is the SOLO PROGRESSION number (how
+       far the player is in the track ladder) — NOT the game track raced,
+       so a run on the game's Track 7 used to save as "Track 2". Label
+       solo replays with the game menu's track number when it's known. */
+    const snapTrack=snapMode?Math.max(1,Math.round(soloCourseNum()||curTrack||1)):curTrack;
+    const snapTrackName=snapMode?soloCourseLabel():trackName(curTrack);
+    const snapUnmodded=!!(snapMode&&soloUnmoddedOn());
     let blob=null;
     if(capVid){
       try{await Promise.race([capVid.done,new Promise((_,r2)=>setTimeout(()=>r2(new Error("t")),3000))]).catch(()=>{});}catch(e){}
@@ -5744,7 +5853,7 @@ async function saveManualReplay(mc,t,endedBy){
       id:"r"+Date.now()+"-"+Math.random().toString(36).slice(2,7),
       ts:snapTs,
       mode:snapMode?"solo":"class",
-      track:snapTrack,trackName:snapTrackName,
+      track:snapTrack,trackName:snapTrackName,unmodded:snapUnmodded,
       endedBy:endedBy||"fail",
       timeText:(t&&t.text)||"—",
       timeMs:(t&&t.ms!=null)?Math.round(t.ms):null,
@@ -5753,6 +5862,119 @@ async function saveManualReplay(mc,t,endedBy){
     await idbPutReplay(rec);
     toast("🎥 Replay saved — find it in 🎥 My Replays (bottom-left).");
     renderReplayBtn();
+  }catch(e){}
+}
+/* ================= 🎥 SOLO REPLAY SAVE PROMPT =================
+   Every solo race is recorded (video first, flipbook fallback). At the
+   finish line the player is asked: save the replay to My Replays, or
+   discard it. A discarded recording — or one from a run that didn't
+   finish — is deleted. (The Y-key capture still force-saves any run,
+   finish line or not.) */
+let soloReplayPromptOpen=null;
+function closeSoloReplayPrompt(){
+  const p=soloReplayPromptOpen;soloReplayPromptOpen=null;
+  if(p&&p.timer){clearTimeout(p.timer);p.timer=null;}
+  if(p&&p.el){try{p.el.remove();}catch(e){}}
+}
+function promptSoloReplaySave(runId,t,endedBy,snapCourseNumRun,snapUnmoddedRun){
+  try{
+    if(soloReplayPromptOpen)return;          // one prompt at a time
+    /* Consume THIS run's captures now (before any await) so a fast restart
+       can't orphan or re-attach them — same rule as the class save. */
+    const capVid=(vidDone&&vidDone.runId===runId)?vidDone:null;vidDone=null;
+    const snapFrames=replayFrames.slice(0,REPLAY_MAX_FRAMES);
+    const snapTimes=replayTimes.slice(0,snapFrames.length);
+    replayFrames=[];replayTimes=[];
+    if(!capVid&&!snapFrames.length)return;   // nothing was recorded
+    const snapMode=true,snapTs=Date.now();
+    /* course + bracket come from the run's START snapshots (passed in) — a
+       mid-run toggle or course change can never mislabel this replay. */
+    const snapTrack=Math.max(1,Math.round((snapCourseNumRun!=null?snapCourseNumRun:soloCourseNum())||curTrack||1));
+    const snapTrackName=soloCourseLabel();
+    const snapUnmodded=!!(snapUnmoddedRun!=null?snapUnmoddedRun:soloUnmoddedOn());
+    const snapTimeText=(t&&t.text)||"—";
+    const snapTimeMs=(t&&t.ms!=null)?Math.round(t.ms):null;
+    const state={runId,capVid,snapFrames,snapTimes,snapMode,snapTs,snapTrack,snapTrackName,snapUnmodded,snapTimeText,snapTimeMs,el:null,timer:null};
+    const el=document.createElement("div");
+    el.id="ptcSoloReplayAsk";
+    el.style.cssText="position:fixed;left:50%;transform:translateX(-50%);bottom:120px;z-index:999999;background:#0f172af2;border:1px solid var(--accent);border-radius:14px;padding:12px 16px;color:#fff;font:600 13px system-ui,sans-serif;display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;box-shadow:0 6px 24px rgba(0,0,0,.5);max-width:min(92vw,540px);text-align:center";
+    el.innerHTML=`<span>🎬 Save this run's replay? <b style="color:#fff">${esc(snapTrackName)}</b> · ${esc(snapTimeText)} <span style="opacity:.6">(auto-deletes)</span></span>`+
+      `<button id="ptcSoloAskSave" style="background:var(--accent);color:#fff;border:none;border-radius:10px;padding:7px 14px;cursor:pointer;font:700 12px system-ui,sans-serif">💾 Save</button>`+
+      `<button id="ptcSoloAskNo" style="background:none;color:#8b90a0;border:1px solid #3a3f52;border-radius:10px;padding:7px 12px;cursor:pointer;font:600 12px system-ui,sans-serif">✕ Discard</button>`;
+    document.body.appendChild(el);
+    state.el=el;
+    const finish=async(save)=>{
+      if(soloReplayPromptOpen!==state)return;
+      closeSoloReplayPrompt();
+      if(!save)return;   // discarded — the recording is simply dropped
+      try{
+        let blob=null;
+        if(state.capVid){
+          try{await Promise.race([state.capVid.done,new Promise((_,r2)=>setTimeout(()=>r2(new Error("t")),3000))]).catch(()=>{});}catch(e){}
+          try{if(state.capVid.chunks&&state.capVid.chunks.length)blob=new Blob(state.capVid.chunks,{type:"video/webm"});}catch(e){}
+        }
+        if(blob&&blob.size<2000)blob=null;
+        let frames=null,frameTimes=null;
+        if(!blob){frames=state.snapFrames.length?state.snapFrames:null;frameTimes=state.snapTimes;}
+        if(!blob&&!frames)return;
+        const rec={
+          id:"r"+Date.now()+"-"+Math.random().toString(36).slice(2,7),
+          ts:state.snapTs,mode:"solo",
+          track:state.snapTrack,trackName:state.snapTrackName,unmodded:state.snapUnmodded,
+          endedBy:"finish",timeText:state.snapTimeText,timeMs:state.snapTimeMs,
+          video:blob||null,frames:frames||null,frameTimes:frameTimes
+        };
+        await idbPutReplay(rec);
+        toast("💾 Replay saved — find it in 🎥 My Replays (bottom-left).");
+        renderReplayBtn();
+      }catch(e){}
+    };
+    document.getElementById("ptcSoloAskSave").onclick=()=>finish(true);
+    document.getElementById("ptcSoloAskNo").onclick=()=>finish(false);
+    /* auto-discard after 15s — an unanswered prompt deletes the recording,
+       exactly like pressing Discard. */
+    state.timer=setTimeout(()=>finish(false),15000);
+    soloReplayPromptOpen=state;
+  }catch(e){}
+}
+/* ================= 📅 SOLO DAILY LEADERBOARD =================
+   Today's solo runs only — resets at local midnight. Modded and unmodded
+   runs rank in separate brackets (the 🔒 Unmodded toggle decides which
+   bracket a run counts in). Works like the class leaderboard: every
+   finish is ranked by time, best time per track. Local to this browser. */
+function soloDailyKey(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function soloDailyLb(){
+  try{const v=JSON.parse(__LS.getItem("ptc-solo-daily-lb")||"null");if(v&&v.day===soloDailyKey())return v;}catch(e){}
+  return {day:soloDailyKey(),runs:[]};
+}
+function soloDailyLbAdd(run){
+  try{
+    const v=soloDailyLb();
+    v.runs.push(run);
+    /* best time per course + bracket — like the class board, one row per
+       track; keep the best (fastest) run for each. */
+    const best={};
+    for(const r of v.runs){const k=r.bracket+"|"+r.track;if(!best[k]||r.timeMs<best[k].timeMs)best[k]=r;}
+    v.runs=Object.values(best).sort((a,b)=>a.timeMs-b.timeMs).slice(0,60);
+    try{__LS.setItem("ptc-solo-daily-lb",JSON.stringify(v));}catch(e2){}
+  }catch(e){}
+}
+function renderSoloDailyLb(){
+  const el=$("soloDailyList");if(!el)return;
+  try{
+    const v=soloDailyLb();
+    if(!v.runs.length){el.textContent="No finished runs yet today — cross a finish line to get on the board!";return;}
+    const mk=(br,label)=>{
+      const rows=v.runs.filter(r=>r.bracket===br).sort((a,b)=>a.timeMs-b.timeMs);
+      if(!rows.length)return "";
+      return `<b style="color:#fff">${label}</b>`+
+        `<table style="width:100%;border-collapse:collapse;margin:4px 0 12px">`+
+        `<tr style="color:var(--muted)"><td style="padding:2px 6px">#</td><td style="padding:2px 6px">Track</td><td style="padding:2px 6px">Time</td><td style="padding:2px 6px">When</td></tr>`+
+        rows.map((r,i)=>`<tr><td style="padding:2px 6px">${i+1}</td><td style="padding:2px 6px">${esc(r.trackName||"—")}</td><td style="padding:2px 6px"><b style="color:#fff">${esc(r.timeText||fmtTimeMs(r.timeMs))}</b></td><td style="padding:2px 6px">${whenish(r.ts)}</td></tr>`).join("")+
+        `</table>`;
+    };
+    el.innerHTML=mk("unmodded","🔒 Unmodded bracket — stock car only")+
+      mk("modded","🔧 Modded bracket — upgraded cars");
   }catch(e){}
 }
 /* 🎥 My Replays floating button + library modal. */
@@ -5800,11 +6022,11 @@ async function openReplayLibrary(){
     ov.style.display="flex";
     const body=document.getElementById("ptcRLBody");
     const list=await idbReplays();
-    if(!list.length){body.textContent="No replays yet — press Y during a run to record one (it saves even if you don't finish).";return;}
+    if(!list.length){body.textContent="No replays yet — every solo race is recorded and you're asked to save it at the finish line; press Y during a run to force-save one.";return;}
     list.sort((a,b)=>(b.ts||0)-(a.ts||0));
     body.innerHTML=list.map(r=>`
       <div class="classrow" style="margin:6px 0;display:flex;justify-content:space-between;align-items:center;gap:8px">
-        <span><b style="color:#fff">${esc(r.trackName||"Track")}</b> · ${esc(r.timeText||"—")} · ${r.endedBy==="finish"?"🏁 finish":(r.endedBy||"run")} · ${whenish(r.ts)}</span>
+        <span><b style="color:#fff">${esc(r.trackName||"Track")}</b> · ${esc(r.timeText||"—")} · ${r.endedBy==="finish"?"🏁 finish":(r.endedBy||"run")}${r.unmodded?" · 🔒 unmodded":""} · ${whenish(r.ts)}</span>
         <span>
           <button data-rlplay="${esc(r.id)}" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:6px 10px;cursor:pointer;font-family:inherit">▶ Play</button>
           <button data-rldel="${esc(r.id)}" style="background:none;color:#8b90a0;border:1px solid #3a3f52;border-radius:8px;padding:6px 8px;cursor:pointer">🗑</button>
@@ -6502,7 +6724,7 @@ HOOKS.frameJobs.push(function soloGhostExactJob(){
        changes without changing its menu number revalidates; a MISSING
        identity stays pending (retried every frame) and never loads a
        possibly-wrong trajectory. */
-    const k=String(RACE.soloTrack||curTrack);
+    const k=String(soloCourseNum()); /* actual course raced — each game track keeps its own best-run ghost */
     let tid=null;
     try{tid=ptcTrackId();}catch(e){}
     const cacheKey=k+"|"+(tid||"");
@@ -7186,7 +7408,11 @@ async function countAttemptStart(){
     const lk=soloLock();
     if(RACE.runId!=null){
       if(soloRunLocks.size>60){const k0=soloRunLocks.keys().next().value;soloRunLocks.delete(k0);}   // tiny LRU cap
-      soloRunLocks.set(RACE.runId,{lockId:lk.lockedAt||0,mode:lk.mode});
+      /* The run's OWN snapshots — taken at START so a mid-run toggle or course
+         change can never mislabel the finish: unmodded decides the daily-board
+         bracket + replay tag, course is the track the run started on. */
+      soloRunLocks.set(RACE.runId,{lockId:lk.lockedAt||0,mode:lk.mode,
+        unmodded:!!soloUnmoddedOn(),course:soloCourseNum()});
     }
     if(soloTracksOn()){
       RACE.soloTrack=curTrack;
@@ -7558,8 +7784,9 @@ async function logResult(t,endedBy,runId){
   /* 🎥 MANUAL REPLAY (Y): if the player asked to record this run, save the
      capture to the local replay library NOW — before anything else, in
      every mode and for every end kind (finish, restart, fail). */
+  let manualSavedThisRun=false;
   try{
-    if(manualCap&&manualCap.runId===runId){const mc=manualCap;manualCap=null;saveManualReplay(mc,t,endedBy);}
+    if(manualCap&&manualCap.runId===runId){const mc=manualCap;manualCap=null;saveManualReplay(mc,t,endedBy);manualSavedThisRun=true;}
     else if(manualCap&&manualCap.runId!==runId)manualCap=null;   /* stale run */
   }catch(e){}
   /* SOLO TRACK RULES: a solo run only updates the local track progress —
@@ -7567,12 +7794,41 @@ async function logResult(t,endedBy,runId){
   if(soloMode){
     /* The lock this run STARTED under (keyed by runId) — both the progress
        update and the payout below only apply when that lock is still the
-       active one (identity = lockedAt). */
+       active one (identity = lockedAt). The entry also carries the run's
+       OWN course + unmodded snapshots (taken at run START) so a mid-run
+       toggle or course change can never mislabel this finish. */
     const rid0=runId!=null?runId:RACE.runId;
     const rl=rid0!=null?soloRunLocks.get(rid0):null;
     const lockNow=soloLock();
     const sameLock=!!(rl&&lockNow&&(lockNow.lockedAt||0)===rl.lockId);
     if(rid0!=null)soloRunLocks.delete(rid0);   // run over — drop its snapshot
+    const snapCourseNum=(rl&&rl.course!=null)?rl.course:soloCourseNum();
+    const snapUnmodded=(rl&&rl.unmodded!=null)?rl.unmodded:soloUnmoddedOn();
+    const snapBracket=snapUnmodded?"unmodded":"modded";
+    /* 🎥 REPLAY SAVE PROMPT: the race was recorded automatically — at the
+       finish line ask whether to keep it (anything not saved is deleted).
+       Skipped when the Y-key capture already force-saved this run. */
+    try{
+      if(endedBy==="finish"&&!manualSavedThisRun&&runId!=null)
+        promptSoloReplaySave(runId,t,endedBy,snapCourseNum,snapUnmodded);
+    }catch(e){}
+    /* 🗑️ NON-FINISH DISCARD: a run that didn't cross the finish line has its
+       recording deleted (delete-unless-saved). The Y-key manual save (if
+       any) already took its own synchronous copies before this point. */
+    if(endedBy!=="finish"&&!manualSavedThisRun){vidDone=null;replayFrames=[];replayTimes=[];}
+    /* 📅 DAILY LEADERBOARD: every finished solo run ranks on today's board,
+       in the modded or unmodded bracket — under the run's START snapshot. */
+    try{
+      if(endedBy==="finish"&&t&&t.ms!=null){
+        soloDailyLbAdd({
+          bracket:snapBracket,
+          track:Math.max(1,Math.round(snapCourseNum||curTrack||1)),
+          trackName:soloCourseLabel(),
+          timeMs:Math.round(t.ms),timeText:t.text,ts:Date.now()
+        });
+        renderSoloDailyLb();
+      }
+    }catch(e){}
     /* 🎯 EXACT GHOST: save this run's POSITION samples when it's the best
        finish on this course — works in ALL solo play (track rules or
        not). The solo ghost then replays this exact trajectory as a
@@ -7581,7 +7837,7 @@ async function logResult(t,endedBy,runId){
        once to create it. */
     try{
       if(endedBy==="finish"&&t&&t.ms!=null){
-        const k0=String(RACE.soloTrack||curTrack);
+        const k0=String(soloCourseNum());
         const key0="ptc-solo-bestpos-"+k0;
         let prev=null;
         try{prev=JSON.parse(__LS.getItem(key0)||"null");}catch(e){}
@@ -8017,7 +8273,7 @@ function releaseRaceKeys(){
 (function cursorFixForBodyOverlays(){
   try{
     const st=document.createElement("style");
-    st.textContent="body.hide-cursor #ptcReplaysBtn,body.hide-cursor #ptcProfileBtn,body.hide-cursor #ptcReplayLib,body.hide-cursor #ptcReplayLib *,body.hide-cursor #ptcProfile,body.hide-cursor #ptcProfile *,body.hide-cursor #ptcNextTrackBtn,body.hide-cursor #ptcTopBar,body.hide-cursor #ptcTopBar *,body.hide-cursor #ptcFinishNext,body.hide-cursor #ptcFinishNext *,body.hide-cursor #ptcTrackAsk,body.hide-cursor #ptcTrackAsk *{cursor:auto!important}";
+    st.textContent="body.hide-cursor #ptcReplaysBtn,body.hide-cursor #ptcProfileBtn,body.hide-cursor #ptcReplayLib,body.hide-cursor #ptcReplayLib *,body.hide-cursor #ptcProfile,body.hide-cursor #ptcProfile *,body.hide-cursor #ptcNextTrackBtn,body.hide-cursor #ptcTopBar,body.hide-cursor #ptcTopBar *,body.hide-cursor #ptcFinishNext,body.hide-cursor #ptcFinishNext *,body.hide-cursor #ptcTrackAsk,body.hide-cursor #ptcTrackAsk *,body.hide-cursor #ptcSoloReplayAsk,body.hide-cursor #ptcSoloReplayAsk *{cursor:auto!important}";
     document.head.appendChild(st);
   }catch(e){}
 })();
