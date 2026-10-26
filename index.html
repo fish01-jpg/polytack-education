@@ -5808,7 +5808,7 @@ function soloCourseLabel(){
    STOCK CAR — upgrades, tuning, abilities and the imported class car are
    all ignored. Runs count in the daily leaderboard's unmodded bracket. */
 function soloUnmoddedOn(){try{return !!(soloMode&&soloSettings().unmodded===true);}catch(e){return false;}}
-async function saveManualReplay(mc,t,endedBy){
+async function saveManualReplay(mc,t,endedBy,runSnap){
   try{
     if(!mc||mc.saved)return;
     mc.saved=true;
@@ -5830,9 +5830,9 @@ async function saveManualReplay(mc,t,endedBy){
        far the player is in the track ladder) — NOT the game track raced,
        so a run on the game's Track 7 used to save as "Track 2". Label
        solo replays with the game menu's track number when it's known. */
-    const snapTrack=snapMode?Math.max(1,Math.round(soloCourseNum()||curTrack||1)):curTrack;
-    const snapTrackName=snapMode?soloCourseLabel():trackName(curTrack);
-    const snapUnmodded=!!(snapMode&&soloUnmoddedOn());
+    const snapTrack=snapMode?Math.max(1,Math.round(((runSnap&&runSnap.course!=null)?runSnap.course:soloCourseNum())||curTrack||1)):curTrack;
+    const snapTrackName=snapMode?((runSnap&&runSnap.courseLabel)||soloCourseLabel()):trackName(curTrack);
+    const snapUnmodded=!!(snapMode&&((runSnap&&runSnap.unmodded!=null)?runSnap.unmodded:soloUnmoddedOn()));
     let blob=null;
     if(capVid){
       try{await Promise.race([capVid.done,new Promise((_,r2)=>setTimeout(()=>r2(new Error("t")),3000))]).catch(()=>{});}catch(e){}
@@ -5876,7 +5876,7 @@ function closeSoloReplayPrompt(){
   if(p&&p.timer){clearTimeout(p.timer);p.timer=null;}
   if(p&&p.el){try{p.el.remove();}catch(e){}}
 }
-function promptSoloReplaySave(runId,t,endedBy,snapCourseNumRun,snapUnmoddedRun){
+function promptSoloReplaySave(runId,t,endedBy,snapCourseNumRun,snapUnmoddedRun,snapCourseLabelRun){
   try{
     if(soloReplayPromptOpen)return;          // one prompt at a time
     /* Consume THIS run's captures now (before any await) so a fast restart
@@ -5890,7 +5890,7 @@ function promptSoloReplaySave(runId,t,endedBy,snapCourseNumRun,snapUnmoddedRun){
     /* course + bracket come from the run's START snapshots (passed in) — a
        mid-run toggle or course change can never mislabel this replay. */
     const snapTrack=Math.max(1,Math.round((snapCourseNumRun!=null?snapCourseNumRun:soloCourseNum())||curTrack||1));
-    const snapTrackName=soloCourseLabel();
+    const snapTrackName=snapCourseLabelRun||soloCourseLabel();
     const snapUnmodded=!!(snapUnmoddedRun!=null?snapUnmoddedRun:soloUnmoddedOn());
     const snapTimeText=(t&&t.text)||"—";
     const snapTimeMs=(t&&t.ms!=null)?Math.round(t.ms):null;
@@ -7412,7 +7412,7 @@ async function countAttemptStart(){
          change can never mislabel the finish: unmodded decides the daily-board
          bracket + replay tag, course is the track the run started on. */
       soloRunLocks.set(RACE.runId,{lockId:lk.lockedAt||0,mode:lk.mode,
-        unmodded:!!soloUnmoddedOn(),course:soloCourseNum()});
+        unmodded:!!soloUnmoddedOn(),course:soloCourseNum(),courseLabel:soloCourseLabel()});
     }
     if(soloTracksOn()){
       RACE.soloTrack=curTrack;
@@ -7786,7 +7786,13 @@ async function logResult(t,endedBy,runId){
      every mode and for every end kind (finish, restart, fail). */
   let manualSavedThisRun=false;
   try{
-    if(manualCap&&manualCap.runId===runId){const mc=manualCap;manualCap=null;saveManualReplay(mc,t,endedBy);manualSavedThisRun=true;}
+    if(manualCap&&manualCap.runId===runId){
+      const mc=manualCap;manualCap=null;
+      /* the run's START snapshot (course + unmodded) labels the save — live
+         state can't mislabel it. */
+      const mrl=runId!=null?soloRunLocks.get(runId):null;
+      saveManualReplay(mc,t,endedBy,mrl);manualSavedThisRun=true;
+    }
     else if(manualCap&&manualCap.runId!==runId)manualCap=null;   /* stale run */
   }catch(e){}
   /* SOLO TRACK RULES: a solo run only updates the local track progress —
@@ -7803,6 +7809,7 @@ async function logResult(t,endedBy,runId){
     const sameLock=!!(rl&&lockNow&&(lockNow.lockedAt||0)===rl.lockId);
     if(rid0!=null)soloRunLocks.delete(rid0);   // run over — drop its snapshot
     const snapCourseNum=(rl&&rl.course!=null)?rl.course:soloCourseNum();
+    const snapCourseLabel=(rl&&rl.courseLabel)||soloCourseLabel();
     const snapUnmodded=(rl&&rl.unmodded!=null)?rl.unmodded:soloUnmoddedOn();
     const snapBracket=snapUnmodded?"unmodded":"modded";
     /* 🎥 REPLAY SAVE PROMPT: the race was recorded automatically — at the
@@ -7810,7 +7817,7 @@ async function logResult(t,endedBy,runId){
        Skipped when the Y-key capture already force-saved this run. */
     try{
       if(endedBy==="finish"&&!manualSavedThisRun&&runId!=null)
-        promptSoloReplaySave(runId,t,endedBy,snapCourseNum,snapUnmodded);
+        promptSoloReplaySave(runId,t,endedBy,snapCourseNum,snapUnmodded,snapCourseLabel);
     }catch(e){}
     /* 🗑️ NON-FINISH DISCARD: a run that didn't cross the finish line has its
        recording deleted (delete-unless-saved). The Y-key manual save (if
@@ -7823,7 +7830,7 @@ async function logResult(t,endedBy,runId){
         soloDailyLbAdd({
           bracket:snapBracket,
           track:Math.max(1,Math.round(snapCourseNum||curTrack||1)),
-          trackName:soloCourseLabel(),
+          trackName:snapCourseLabel,
           timeMs:Math.round(t.ms),timeText:t.text,ts:Date.now()
         });
         renderSoloDailyLb();
