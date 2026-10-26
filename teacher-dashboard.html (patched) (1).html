@@ -1,0 +1,2057 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Poly Track Classroom — Teacher Dashboard</title><style>
+:root{--bg:#0b1120;--panel:#151f32;--panel2:#1d2a44;--text:#eef2fb;--muted:#8ea0bf;
+--accent:#8b5cf6;--accent2:#22d3ee;--good:#34d399;--bad:#fb7185;--border:#2c3d5c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 system-ui,sans-serif}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer;background:var(--panel2);color:var(--text);border:1px solid var(--border);padding:9px 14px;border-radius:10px;transition:filter .15s,border-color .15s}
+button:hover{filter:brightness(1.18);border-color:#3d5175}
+button.primary{background:linear-gradient(135deg,#8b5cf6,#7c3aed);border-color:transparent;font-weight:700}
+button.danger{background:#7f1d1d;border-color:transparent}
+button:disabled{opacity:.6;cursor:default}
+.wrap{max-width:1020px;margin:0 auto;padding:20px 16px 70px}
+h1{font-size:24px;margin:0 0 4px;letter-spacing:-.02em}
+h2{font-size:18px;margin:0 0 10px}
+.eyebrow{color:var(--accent2);font-size:11px;font-weight:800;letter-spacing:1.2px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px;margin:12px 0}
+.card>h2:first-child,.card>.eyebrow:first-child{margin-top:0}
+.field{display:grid;gap:5px;margin:10px 0}
+.field label{font-size:12px;color:var(--muted);font-weight:700}
+.field input:not([type=checkbox]),.field select,.field textarea{width:100%;min-width:0;padding:9px;
+border:1px solid var(--border);border-radius:8px;background:#0b1220;color:var(--text)}
+.field textarea{min-height:200px;resize:vertical;font-family:ui-monospace,monospace;font-size:13px}
+.row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.row>*{flex:1;min-width:130px}
+.small{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.5}
+.hidden{display:none!important}
+.code{font-family:monospace;font-size:28px;font-weight:800;letter-spacing:6px;color:var(--accent2);
+background:#0b1220;border:1px solid var(--border);border-radius:12px;padding:10px 18px;display:inline-block}
+table{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+tr:hover td{background:#182338}
+.pill{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12px;font-weight:700}
+.pill.good{background:#064e3b;color:var(--good)}
+.pill.bad{background:#881337;color:var(--bad)}
+.pill.mut{background:#2c3d5c;color:var(--muted)}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:100;
+background:#111827;color:#fff;border:1px solid #64748b;border-radius:10px;padding:10px 15px;display:none;max-width:90vw}
+#shotModal{position:fixed;inset:0;background:#000c;z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+#shotModal img{max-width:min(720px,94vw);max-height:82vh;border-radius:10px;border:1px solid var(--border)}
+.stat{display:inline-block;background:#0b1220;border:1px solid var(--border);border-radius:10px;padding:8px 14px;margin:4px 6px 4px 0}
+.stat strong{display:block;font-size:20px}
+.stat span{font-size:11px;color:var(--muted)}
+.linklike{background:none;border:none;padding:0;color:var(--accent2);text-decoration:underline}
+.classrow{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+/* ---- sticky class header + tabs ---- */
+.topbar{position:sticky;top:0;z-index:50;background:#0b1120ee;backdrop-filter:blur(8px);
+border-bottom:1px solid var(--border);margin:0 -16px 4px;padding:12px 16px}
+.topbar .inner{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.topbar h1{font-size:19px;margin:0}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding:10px 0 2px;scrollbar-width:none}
+.tab{white-space:nowrap;background:transparent;border:1px solid transparent;color:var(--muted);padding:7px 13px;border-radius:99px;font-weight:600;font-size:13.5px}
+.tab:hover{color:var(--text);filter:none;border-color:transparent;background:var(--panel2)}
+.tab.active{background:var(--accent);color:#fff}
+section[data-sec]{animation:fadein .18s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+/* ---- ❓ help tooltips: tiny question-mark buttons, click/tap/hover/focus ---- */
+details.explain{margin:6px 0 10px;border:1px solid var(--line);border-radius:10px;padding:0 12px;background:var(--bg2,#f7f8fa)}
+details.explain>summary{cursor:pointer;font-weight:600;padding:8px 0;color:var(--mut,#666);font-size:.85rem}
+details.explain[open]>summary{padding-bottom:6px}
+.tip{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;
+border-radius:50%;border:1px solid var(--border);background:#0b1220;color:var(--muted);
+font-size:11px;font-weight:700;line-height:1;cursor:help;padding:0;margin-left:6px;
+vertical-align:middle;position:relative;flex:none}
+.tip:hover,.tip:focus-visible,.tip.open{color:#c4b5fd;border-color:var(--accent);outline:none}
+.tip::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 9px);left:50%;
+transform:translateX(-50%);background:#0b1220;color:#e2e8f0;border:1px solid var(--border);
+border-radius:10px;padding:9px 11px;font-size:12px;font-weight:400;line-height:1.5;
+width:max-content;max-width:290px;white-space:normal;text-align:left;opacity:0;
+pointer-events:none;transition:opacity .12s;z-index:80;box-shadow:0 8px 24px #0009}
+.tip:hover::after,.tip:focus-visible::after,.tip.open::after{opacity:1}
+.tip::before{content:"";position:absolute;bottom:calc(100% + 3px);left:50%;transform:translateX(-50%);
+border:5px solid transparent;border-top-color:var(--border);opacity:0;pointer-events:none}
+.tip:hover::before,.tip:focus-visible::before,.tip.open::before{opacity:1}
+/* ---- 🎮 game-mode preset buttons ---- */
+.preset-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin:12px 0 4px}
+.preset-btn{display:block;text-align:left;background:var(--panel2);border:1px solid var(--border);
+border-radius:12px;padding:12px 14px;transition:border-color .15s,filter .15s}
+.preset-btn:hover{filter:brightness(1.15)}
+.preset-btn.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.preset-btn .p-name{font-weight:700;font-size:14.5px}
+.preset-btn .p-desc{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.45}
+.preset-btn .p-icon{font-size:19px;margin-right:6px}
+#presetDesc{min-height:20px}
+</style></head><body>
+<div class="wrap">
+
+<!-- ============ AUTH ============ -->
+<div id="authView">
+  <div class="eyebrow">POLY TRACK CLASSROOM</div>
+  <h1>Teacher sign in</h1>
+  <div class="card" style="max-width:440px">
+    <div class="field"><label for="tEmail">Email</label><input id="tEmail" type="email" autocomplete="username"></div>
+    <div class="field"><label for="tPass">Password</label><input id="tPass" type="password" autocomplete="current-password"></div>
+    <div class="row"><button id="tLoginBtn" class="primary">Log in</button><button id="tRegisterBtn">Register</button></div>
+    <div class="small">First time? Register with any email + password (6+ characters). Students don't need accounts — they join with your class code.</div>
+  </div>
+</div>
+
+<!-- ============ CLASS LIST ============ -->
+<div id="listView" class="hidden">
+  <div class="eyebrow">TEACHER DASHBOARD</div>
+  <h1>Your classes</h1>
+  <div class="card">
+    <div class="field"><label for="newClassName">New class name</label><input id="newClassName" maxlength="60" placeholder="e.g. 3rd Hour Chemistry"></div>
+    <button id="createClassBtn" class="primary">Create class</button>
+    <div class="small">A unique join code is generated automatically. Share it with students — they enter it on the game page.</div>
+  </div>
+  <div id="classList"></div>
+  <div class="row"><button id="logoutBtn">Log out</button></div>
+</div>
+
+<!-- ============ CLASS MANAGE (tabbed) ============ -->
+<div id="classView" class="hidden">
+
+  <div class="topbar">
+    <div class="inner">
+      <div>
+        <div class="eyebrow">MANAGING CLASS</div>
+        <h1 id="cName">Class</h1>
+      </div>
+      <div style="text-align:right">
+        <span class="code" id="cCode">------</span>
+        <div class="small" style="margin:6px 0 0"><button id="copyCodeBtn" class="linklike">Copy join code</button></div>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="tab active" data-tab="overview">🏠 Overview</button>
+      <button class="tab" data-tab="quiz">⚙️ Class & quiz</button>
+      <button class="tab" data-tab="garage">🛒 Garage & rewards</button>
+      <button class="tab" data-tab="unlocks">🔓 Unlocks & tracks</button>
+      <button class="tab" data-tab="questions">❓ Questions</button>
+      <button class="tab" data-tab="leaderboard">🏆 Leaderboard</button>
+      <button class="tab" data-tab="results">📊 Results</button>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:2px">
+      <button id="modeBtn" class="primary">▶ Start class (Classroom mode)</button>
+      <span class="small" id="modeStatus" style="margin:0">Classroom mode is OFF — students can't race.</span>
+    </div>
+  </div>
+
+  <!-- ========== TAB: OVERVIEW ========== -->
+  <section data-sec="overview">
+    <div class="card">
+      <h2>📋 Teacher summary</h2>
+      <div class="small">Builds a report from <b>all</b> saved runs: who finished their track (with score + time) and who has not answered all the questions yet.</div>
+      <div class="row"><button id="summaryBtn" class="primary">Build teacher summary</button></div>
+      <div id="summaryBody"></div>
+    </div>
+    <div class="card">
+      <h2>Students <span class="small" id="studentCount"></span></h2>
+      <div class="small">Students who join twice with the same name (same person, another device) are merged into one row automatically.</div>
+      <table><thead><tr><th>Name</th><th>Joined</th><th>Score</th><th>Answered</th><th>Races</th><th>Tracks done</th><th></th></tr></thead>
+      <tbody id="studentRows"></tbody></table>
+    </div>
+  </section>
+
+  <!-- ========== TAB: CLASS & QUIZ ========== -->
+  <section data-sec="quiz" class="hidden">
+    <div class="card" id="presetCard">
+      <h2>🎮 Game mode presets <span class="pill mut" id="presetCurrent">—</span>
+        <button type="button" class="tip" data-tip="A preset sets every class option at once — quiz timing, car physics, garage economy, track rules — so you don't have to hand-tune each one. Pick one, review what it changes below, then Apply & save. You can still tweak any setting afterwards (the badge then shows Custom)." aria-label="About game mode presets">?</button></h2>
+      <div class="small">Pick how your class plays — one click configures everything below (you can still fine-tune any setting after).</div>
+      <div class="preset-grid" id="presetGrid"></div>
+      <div class="small" id="presetDesc">Select a preset to see what it changes.</div>
+      <div class="row" style="margin-top:10px"><button id="applyPresetBtn" class="primary">💾 Apply preset & save</button></div>
+      <div class="small">Applying saves the preset's settings to the class right away (it never touches your join code, question bank, custom tracks or Classroom-mode on/off).</div>
+    </div>
+    <div class="card">
+      <h2>Class settings (enforced for everyone who joins)</h2>
+      <div class="row">
+        <div class="field"><label for="sTotal">Total questions per race <button type="button" class="tip" data-tip="How many questions a student must answer during one race. In Tracks mode this total is split across the tracks." aria-label="About total questions">?</button></label><input id="sTotal" type="number" min="1" max="100" value="15"></div>
+        <div class="field"><label for="sInterval">Seconds between questions <button type="button" class="tip" data-tip="How often a question pops up. 10s = a question every 10 seconds of race time (or wall-clock time in Timed mode)." aria-label="About question interval">?</button></label><input id="sInterval" type="number" min="3" max="3600" value="10"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="sMode">Question timing <button type="button" class="tip" data-tip="Race progress: questions appear while racing. Restart: a question appears only when the student restarts. Timed: questions appear on the clock even without racing. Tracks: students answer a track's quiz to unlock that track." aria-label="About question timing">?</button></label>
+          <select id="sMode"><option value="race-progress">Race progress (every N sec of race time)</option><option value="restart">Only when the student restarts/resets</option><option value="timed">Wall clock (every N sec, no race needed)</option><option value="tracks">Tracks — answer a quiz to unlock each track</option></select></div>
+        <div class="field"><label for="sFeedback">Answer feedback <button type="button" class="tip" data-tip="Instant: after each answer the student sees the correct answer + your explanation. Quiet: they only see right/wrong — explanations come later in Results." aria-label="About answer feedback">?</button></label>
+          <select id="sFeedback"><option value="instant">Show answer + explanation</option><option value="quiet">Correct/incorrect only</option></select></div>
+        <div class="field"><label for="sBypass">"spider" bypass <button type="button" class="tip" data-tip="A mercy switch: typing the word &quot;spider&quot; counts any question as correct. Handy for a student who is stuck on one question." aria-label="About spider bypass">?</button></label>
+          <select id="sBypass"><option value="no">Disabled</option><option value="yes">Enabled (types "spider" = correct)</option></select></div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="sPenalty">Wrong-answer penalty (seconds added to final time) <button type="button" class="tip" data-tip="Each wrong answer adds this many seconds to the student's final time on the leaderboard — rewards knowing the material, not just finishing fast." aria-label="About wrong-answer penalty">?</button></label><input id="sPenalty" type="number" min="0" max="300" value="3"></div>
+        <div class="field"><label for="sGoalAcc">Leaderboard goal: accuracy % <button type="button" class="tip" data-tip="A run only reaches the leaderboard if the student answers ALL questions with at least this accuracy. 80 = 80%." aria-label="About goal accuracy">?</button></label><input id="sGoalAcc" type="number" step="any" value="80"></div>
+        <div class="field"><label for="sGoalTime">Leaderboard goal: time cap in seconds (0 = none) <button type="button" class="tip" data-tip="Optional: a run only counts if the final time (race time + penalties) is under this cap. 0 disables the cap." aria-label="About time cap">?</button></label><input id="sGoalTime" type="number" min="0" max="3600" value="0"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="sTheme">Student overlay theme <button type="button" class="tip" data-tip="The color look of the quiz panel students see over the game. Purely cosmetic." aria-label="About overlay theme">?</button></label>
+          <select id="sTheme"><option value="default">Dark violet</option><option value="neon">Neon</option><option value="light">Light</option></select></div>
+        <div class="field"><label for="sAccent">Accent color <button type="button" class="tip" data-tip="The highlight color used across the student overlay (buttons, accents)." aria-label="About accent color">?</button></label><input id="sAccent" type="color" value="#8b5cf6"></div>
+        <div class="field"><label for="sShadow">👤 Class shadow (race the best student's ghost) <button type="button" class="tip" data-tip="Shows a see-through &quot;shadow&quot; car of a classmate's best run on the track while students race, so they can chase it. Fastest = quickest finisher, Highest = best scorer." aria-label="About class shadow">?</button></label>
+          <select id="sShadow"><option value="off">Off</option><option value="fastest">Shadow of the fastest finish</option><option value="highest">Shadow of the highest score</option></select></div>
+        <div class="field"><label for="sFunMode">🎉 Fun Mode (no questions — students race freely with all class features) <button type="button" class="tip" data-tip="Removes questions entirely but keeps every other feature (garage, ghosts, leaderboard, run bank). Great for a free-play day." aria-label="About fun mode">?</button></label>
+          <select id="sFunMode"><option value="off">Off (questions required)</option><option value="on">On (questions removed, race freely)</option></select></div>
+      </div>
+      <div class="small">Students cannot change Fun Mode (or any class setting) from the student app — it only reads settings. Students can also pick any classmate in "Race a classmate" (their ghost car appears physically on the track), quiz results show via the 📊 Results button, and Solo practice (no join code) stays free and unrecorded.</div>
+      <div class="eyebrow" style="margin-top:14px">Car physics (class default)</div>
+      <div class="small">The baseline for every student's car — this really changes the car in the game (engine force, wheel grip, drag/top speed and braking). 1 = the game's normal car. Students' Garage performance upgrades stack on top of these. Changes apply live, even mid-race.</div>
+      <div class="row">
+        <div class="field"><label for="sCarAccel">Acceleration × (any number) <button type="button" class="tip" data-tip="Multiplies the engine force. 1 = stock. 1.5 makes the car noticeably quicker off the line; 0.8 makes it sluggish." aria-label="About acceleration multiplier">?</button></label><input id="sCarAccel" type="number" step="any" value="1"></div>
+        <div class="field"><label for="sCarTop">Top speed × (any number) <button type="button" class="tip" data-tip="Multiplies the car's maximum speed. 1 = stock." aria-label="About top speed multiplier">?</button></label><input id="sCarTop" type="number" step="any" value="1"></div>
+        <div class="field"><label for="sCarGrip">Grip × (any number) <button type="button" class="tip" data-tip="Multiplies tire grip. More grip = tighter cornering; less grip = drifty and slidey." aria-label="About grip multiplier">?</button></label><input id="sCarGrip" type="number" step="any" value="1"></div>
+        <div class="field"><label for="sCarBrake">Brakes × (any number) <button type="button" class="tip" data-tip="Multiplies braking force. 1 = stock." aria-label="About brake multiplier">?</button></label><input id="sCarBrake" type="number" step="any" value="1"></div>
+      </div>
+      <div class="row"><button id="saveSettingsBtn" class="primary">Save settings</button></div>
+      <div class="small">These settings override anything on the student side — students can't change quiz behavior.</div>
+    </div>
+
+    <div class="card hidden" id="tracksCard">
+      <h2>Tracks mode settings <button type="button" class="tip" data-tip="These options only apply when Question timing is set to Tracks mode. They control how the track campaign plays out for students." aria-label="About tracks mode settings">?</button></h2>
+      <div class="small">In Tracks mode the total questions are split across the tracks. Students answer a track's questions to unlock it, get a limited number of race attempts for their best score, then either re-unlock the same track (same questions) or move to the next track.</div>
+      <div class="row">
+        <div class="field"><label for="sTrackCount">Number of tracks <button type="button" class="tip" data-tip="How many tracks are in the campaign. The question total is split across them." aria-label="About number of tracks">?</button></label><input id="sTrackCount" type="number" min="1" max="20" value="5"></div>
+        <div class="field"><label for="sAttempts">Attempts allowed per track (before it locks) <button type="button" class="tip" data-tip="How many races a student gets per track before it locks. More attempts = more chances at a best time." aria-label="About attempts per track">?</button></label><input id="sAttempts" type="number" min="1" max="100" value="5"></div>
+        <div class="field"><label for="sLockScore">Lock best score once the track locks <button type="button" class="tip" data-tip="Yes: once a track locks, its best score is frozen — re-unlocking can't improve it. No: students can keep improving it by re-unlocking." aria-label="About locking best score">?</button></label>
+          <select id="sLockScore"><option value="no">No — students can improve it by re-unlocking</option><option value="yes">Yes — freeze the best score at lock time</option></select></div>
+        <div class="field"><label for="sTierSize">Class tiers (tracks per tier) <button type="button" class="tip" data-tip="0 = off (default — all tracks unlock the normal way). Set 2 or more to group tracks into Class tiers (C, B, A…): completing every track in a tier unlocks the next tier's tracks (no unlock quiz for them), and previously cleared tiers stay permanently accessible. Example: 4 per tier on 12 tracks = 3 tiers." aria-label="About class tiers">?</button></label><input id="sTierSize" type="number" min="0" max="20" value="0"></div>
+      </div>
+      <div class="row"><button id="saveTracksBtn" class="primary">Save tracks settings</button></div>
+      <div class="small" id="trackAssignInfo"></div>
+    </div>
+  </section>
+
+  <!-- ========== TAB: GARAGE & REWARDS ========== -->
+  <section data-sec="garage" class="hidden">
+    <div class="card">
+      <h2>Garage & points <button type="button" class="tip" data-tip="The Garage is the in-game shop where students spend points on paints, performance upgrades, abilities and cosmetics. Everything here controls that economy." aria-label="About garage and points">?</button></h2>
+      <details class="explain"><summary>How the Garage works (painted cars, upgrades, powers, export/import)</summary><div class="small">Students earn points for correct answers and completed tracks, then spend them in the Garage: car paints (applied LIVE — no reload), performance upgrades, abilities and cosmetics. <b>Each Garage upgrade is now ONE button</b> — click it repeatedly to keep leveling up. 🚀 Jump Jets: SPACE pops the car off the ground (5 levels). ⚡ Jet Turbo: hold SHIFT for a sustained engine boost — the fuel tank refills every round. Once an upgrade is owned, a 🎚️ slider lets the student tune its power, and ♻️ Reset sells all performance upgrades back for a full refund. Students can 📤 Export their car as a code and 📥 Import it in Solo practice — classes never import, so the class car always comes from your class settings.</div></details>
+      <div class="row">
+        <div class="field"><label for="aShop">Garage / shop <button type="button" class="tip" data-tip="Disabled hides the whole Garage from students — they can't buy anything or change their car." aria-label="About garage toggle">?</button></label><select id="aShop"><option value="yes">Enabled</option><option value="no">Disabled</option></select></div>
+        <div class="field"><label for="aStartPts">Starting points (new students) <button type="button" class="tip" data-tip="Points a student starts with when they join. Use the Top-up button below to give this to students who already joined." aria-label="About starting points">?</button></label><input id="aStartPts" type="number" min="0" max="100000" value="0"></div>
+        <div class="field"><label for="aPtsOk">Points per correct answer <button type="button" class="tip" data-tip="How many points a correct quiz answer earns. Set 0 to make tracks the only income." aria-label="About points per correct answer">?</button></label><input id="aPtsOk" type="number" min="0" max="1000" value="10"></div>
+        <div class="field"><label for="aPtsDone">Points per completed track <button type="button" class="tip" data-tip="How many points finishing (completing) a track earns. Paid once per track completion." aria-label="About points per completed track">?</button></label><input id="aPtsDone" type="number" min="0" max="10000" value="50"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="aCostMult">Cost multiplier (0.5 = half price) <button type="button" class="tip" data-tip="Scales every Garage price. Below 1 = cheaper upgrades (faster progression), above 1 = pricier (longer grind)." aria-label="About cost multiplier">?</button></label><input id="aCostMult" type="number" min="0.1" max="10" step="0.1" value="1"></div>
+        <div class="field"><label for="aCatPaint">Car paints <button type="button" class="tip" data-tip="Whether students can buy car paints (recolors)." aria-label="About car paints">?</button></label><select id="aCatPaint"><option value="yes">Allowed</option><option value="no">Hidden</option></select></div>
+        <div class="field"><label for="aCatPerf">Performance upgrades <button type="button" class="tip" data-tip="Whether students can buy engine/tires/aero/brakes upgrades and powers (jump jets, turbo, wall rider)." aria-label="About performance upgrades">?</button></label><select id="aCatPerf"><option value="yes">Allowed</option><option value="no">Hidden</option></select></div>
+        <div class="field"><label for="aCatCons">Consumables <button type="button" class="tip" data-tip="Pit-stop items bought as many times as wanted (e.g. extra attempts)." aria-label="About consumables">?</button></label><select id="aCatCons"><option value="yes">Allowed</option><option value="no">Hidden</option></select></div>
+        <div class="field"><label for="aCatCosm">Cosmetics <button type="button" class="tip" data-tip="Visual extras that don't change physics." aria-label="About cosmetics">?</button></label><select id="aCatCosm"><option value="yes">Allowed</option><option value="no">Hidden</option></select></div>
+      </div>
+      <div class="eyebrow" style="margin-top:14px">Run bank (attempts)</div>
+      <div class="row">
+        <div class="field"><label for="aRunsQ">Runs per correct answer (run bank) <button type="button" class="tip" data-tip="Students earn race runs by answering correctly — e.g. 5 means every correct answer adds 5 runs to their bank." aria-label="About runs per correct answer">?</button></label><input id="aRunsQ" type="number" min="0" max="1000" value="5"></div>
+        <div class="field"><label for="aRunsEarn">Students can earn runs from questions <button type="button" class="tip" data-tip="Off = the run bank doesn't grow from answers (students get a fixed budget instead)." aria-label="About earning runs">?</button></label><select id="aRunsEarn"><option value="yes">Yes</option><option value="no">No</option></select></div>
+        <div class="field"><label for="aRunsCarry">Unused runs carry over between sessions <button type="button" class="tip" data-tip="Yes: saved runs persist. No: the bank resets weekly (Monday) so everyone starts fresh." aria-label="About run carryover">?</button></label><select id="aRunsCarry"><option value="yes">Yes (default)</option><option value="no">No — reset weekly</option></select></div>
+      </div>
+      <div class="row"><button id="saveAdvancedBtn" class="primary">Save garage settings</button><button id="grantStartBtn">Top up current students to starting points</button></div>
+    </div>
+
+    <div class="card">
+      <h2>🎛️ Advanced physics tuning (student Garage) <button type="button" class="tip" data-tip="Lets students fine-tune real physics sliders in their Garage (mass, downforce, suspension…). Turn off to hide the section — saved tunes are kept but ignored." aria-label="About advanced physics tuning">?</button></h2>
+      <div class="small">When ON, students see advanced physics sliders in the Garage (mass, weight distribution, downforce, suspension stiffness/damping, steering speed, turning stability, drift momentum, air gravity). Changes apply LIVE. When OFF, the section is hidden and any saved physTune is ignored (not deleted) until you turn it back on.</div>
+      <div class="row">
+        <div class="field"><label for="aPhysTune">Advanced physics tuning</label><select id="aPhysTune"><option value="yes">Allowed (default)</option><option value="no">Disabled</option></select></div>
+      </div>
+      <div class="small" style="margin-top:8px"><b>Per-parameter range overrides</b> — leave blank to use the built-in default range. Both min and max must be set to override a range.</div>
+      <div class="row" id="physRangeRow">
+        <div class="field"><label for="aPhysMass">Mass range (e.g. 0.5–2)</label><input id="aPhysMass" type="text" placeholder="0.5,2"></div>
+        <div class="field"><label for="aPhysWeightDist">Weight dist range</label><input id="aPhysWeightDist" type="text" placeholder="0.5,1.5"></div>
+        <div class="field"><label for="aPhysDownforce">Downforce range</label><input id="aPhysDownforce" type="text" placeholder="0.5,3"></div>
+        <div class="field"><label for="aPhysSuspStiff">Suspension stiffness range</label><input id="aPhysSuspStiff" type="text" placeholder="0.5,2"></div>
+        <div class="field"><label for="aPhysSuspDamp">Suspension damping range</label><input id="aPhysSuspDamp" type="text" placeholder="0.5,2"></div>
+        <div class="field"><label for="aPhysSteerSpeed">Steering speed range</label><input id="aPhysSteerSpeed" type="text" placeholder="0.5,2"></div>
+        <div class="field"><label for="aPhysStability">Stability range</label><input id="aPhysStability" type="text" placeholder="0.5,3"></div>
+        <div class="field"><label for="aPhysDriftKeep">Drift momentum range</label><input id="aPhysDriftKeep" type="text" placeholder="0,1"></div>
+        <div class="field"><label for="aPhysAirG">Air gravity range</label><input id="aPhysAirG" type="text" placeholder="1,3"></div>
+      </div>
+      <div class="row"><button id="saveAdvancedBtn3" class="primary">Save advanced settings</button></div>
+    </div>
+  </section>
+
+  <!-- ========== TAB: UNLOCKS & TRACKS ========== -->
+  <section data-sec="unlocks" class="hidden">
+    <div class="card">
+      <h2>Track unlock rules <button type="button" class="tip" data-tip="Extra requirements before a track counts as completed or can be skipped. They mainly matter in Tracks mode." aria-label="About track unlock rules">?</button></h2>
+      <div class="row">
+        <div class="field"><label for="aUnlockAcc">Required quiz accuracy to unlock (0 = off, %) <button type="button" class="tip" data-tip="In Tracks mode: the accuracy a student needs on a track's quiz to unlock that track. 0 = no accuracy requirement." aria-label="About unlock accuracy">?</button></label><input id="aUnlockAcc" type="number" min="0" max="100" value="0"></div>
+        <div class="field"><label for="aReqFinish">Must cross the finish line to complete a track <button type="button" class="tip" data-tip="Yes: attempts alone aren't enough — the student must also cross the finish line at least once for the track to count as completed." aria-label="About finish requirement">?</button></label><select id="aReqFinish"><option value="yes">Yes — must finish a race at least once</option><option value="no">No — attempts used up is enough</option></select></div>
+        <div class="field"><label for="aAllowSkip">Students may SKIP a track <button type="button" class="tip" data-tip="Whether students can skip ahead to the next track without completing the current one (after answering enough questions)." aria-label="About allowing skips">?</button></label><select id="aAllowSkip"><option value="no">No</option><option value="yes">Yes (after answering N questions)</option></select></div>
+        <div class="field"><label for="aSkipQ">Questions to answer before skipping <button type="button" class="tip" data-tip="How many questions a student must answer before the Skip button works." aria-label="About skip questions">?</button></label><input id="aSkipQ" type="number" min="1" max="100" value="5"></div>
+      </div>
+      <div class="row"><button id="saveAdvancedBtn2" class="primary">Save unlock rules</button></div>
+      <div class="small">This saves the unlock rules together with the Garage settings from the other tabs (they are one settings document).</div>
+    </div>
+    <div class="card">
+      <h2>⭐ Custom tracks (extra quiz tracks for all students — work in every mode)</h2>
+      <details class="explain"><summary>How custom tracks work</summary><div class="small">Add a named track with its own questions. In tracks mode it appears AFTER the numbered tracks (students race the game's highest track as a stand-in); in all other modes its questions are mixed into the quiz pool.</div></details>
+      <div class="row">
+        <div class="field"><label for="ctName">Custom track name</label><input id="ctName" placeholder="e.g. Final Exam Track"></div>
+      </div>
+      <div class="field"><label for="ctQuestions">Questions (JSON, same format as the question bank)</label><textarea id="ctQuestions" spellcheck="false" style="min-height:90px" placeholder='[{"question":"...","choices":["a","b","c"],"correct":0,"explanation":"..."}]'></textarea></div>
+      <div class="row"><button id="addCustomTrackBtn" class="primary">Add custom track</button></div>
+      <div id="customTracksList"></div>
+    </div>
+    <div class="card">
+      <h2>🎮 Game tracks (raceable in the game itself)</h2>
+      <div class="small">Paste PolyTrack track import codes — one per line — and every student in this class gets them in their game's Play → track list automatically (they appear as the game's custom tracks). Get codes from the game's Editor (Export button). Students can race these tracks in any mode; runs record like any other run.</div>
+      <div class="field"><label for="gtCodes">Track import codes (one per line)</label><textarea id="gtCodes" spellcheck="false" style="min-height:100px" placeholder="v1n..."></textarea></div>
+      <div class="row"><button id="addGameTracksBtn" class="primary">Add game tracks</button></div>
+      <div id="gameTracksList"></div>
+    </div>
+  </section>
+
+  <!-- ========== TAB: QUESTIONS ========== -->
+  <section data-sec="questions" class="hidden">
+    <div class="card">
+      <h2>Question bank</h2>
+      <div class="field"><label for="bankEditor">Questions (JSON)</label><textarea id="bankEditor" spellcheck="false"></textarea></div>
+      <div class="row">
+        <button id="applyBankBtn" class="primary">Save question bank</button>
+        <button id="importBtn">Import JSON/CSV file</button>
+        <button id="exportBtn">Export JSON</button>
+        <button id="defaultsBtn">Restore chemistry defaults</button>
+      </div>
+      <input type="file" id="importFile" class="hidden" accept=".json,.csv">
+      <div class="small" id="bankCount"></div>
+      <div class="small">JSON fields: question, choices (2–4), answer (zero-based index or exact choice text), explanation, category. CSV headers: question,a,b,c,d,answer,explanation,category.</div>
+    </div>
+  </section>
+
+  <!-- ========== TAB: LEADERBOARD ========== -->
+  <section data-sec="leaderboard" class="hidden">
+    <div class="card">
+      <h2>🏆 Class leaderboard <span class="small" id="lbCount"></span></h2>
+      <div class="small" id="lbGoalText"></div>
+      <div class="row"><button id="rebuildLbBtn">Rebuild from results</button><button id="clearLbBtn" class="danger">Clear leaderboard</button></div>
+      <table><thead><tr><th id="lbRankHead">#</th><th>Student</th><th>Track</th><th>Accuracy</th><th id="lbTimeHead">Final time</th><th>Race time</th><th>Points</th><th>Updated</th><th>Runs</th></tr></thead>
+      <tbody id="lbRows"></tbody></table>
+      <div class="small">Students earn a spot by finishing a race that meets the goal (all questions answered, goal accuracy, and the time cap if you set one). Wrong answers add the penalty to their final time. In Tracks mode the board shows each student's CUMULATIVE accuracy and the TOTAL time across every track they've completed (tagged with their latest track), ranked by accuracy first, then total time. The whole class sees this board when they join.</div>
+    </div>
+  </section>
+
+  <!-- ========== TAB: RESULTS ========== -->
+  <section data-sec="results" class="hidden">
+    <div class="card">
+      <h2>Race results <span class="small" id="resultCount"></span></h2>
+      <div class="row">
+        <div class="field"><label for="resultFilter">Filter by student</label><select id="resultFilter"><option value="all">All students</option></select></div>
+        <div class="field"><label for="onlyFinish">Run type</label><select id="onlyFinish"><option value="finish">Finish-line runs only</option><option value="all">All runs (incl. restarts)</option></select></div>
+        <div class="field"><label for="resultSort">Sort</label><select id="resultSort"><option value="new">Newest first</option><option value="fast">Fastest final time</option></select></div>
+      </div>
+      <div class="row"><button id="csvBtn">Export CSV</button><button id="loadMoreBtn">Load older runs</button><button id="clearResultsBtn" class="danger">Clear all results</button></div>
+      <table><thead><tr><th>Student</th><th>Score</th><th>Race time</th><th>Penalty</th><th>Final time</th><th>How it ended</th><th>When</th><th>Evidence</th></tr></thead>
+      <tbody id="resultRows"></tbody></table>
+      <div class="small">Race time is read directly from the game's timer. Evidence shows the saved screenshot (game frame with the race time stamped on, or a time card if the frame couldn't be captured).</div>
+    </div>
+  </section>
+
+  <div class="row"><button id="backBtn">← All classes</button><button id="deleteClassBtn" class="danger">Delete class</button></div>
+</div>
+
+</div>
+
+<div id="toast" class="toast"></div>
+<div id="shotModal" class="hidden"><div style="text-align:center;max-width:min(760px,94vw)">
+<img id="shotImg" alt="Race evidence" style="max-width:100%;max-height:60vh;border-radius:10px;border:1px solid #475569">
+<div id="replayWrap" class="hidden" style="margin-top:12px">
+  <img id="replayImg" alt="Run replay" style="max-width:100%;max-height:50vh;border-radius:10px;border:1px solid #475569">
+  <div class="small">Run replay — frames recorded during the race (4× speed).</div>
+  <button id="replayPlayBtn">▶ Play replay</button>
+</div>
+<div id="shotAnswers" style="text-align:left;background:#1e293b;border:1px solid #475569;border-radius:10px;padding:12px;margin-top:12px;max-height:30vh;overflow:auto"></div>
+<button onclick="document.getElementById('shotModal').classList.add('hidden');window.__stopReplay&&window.__stopReplay()" style="margin-top:12px">Close</button></div></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+const $$ = s => [...document.querySelectorAll(s)];
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA_iQX9YTI2n9YkQMBaT3Ss1dgNlhuIOoY",
+  authDomain: "database-4-51de2.firebaseapp.com",
+  projectId: "database-4-51de2",
+  storageBucket: "database-4-51de2.firebasestorage.app",
+  messagingSenderId: "312926746651",
+  appId: "1:312926746651:web:6615a1c806c7351567e0be",
+  measurementId: "G-S32F48TYKK"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+/* Default chemistry bank (same as the original quiz). */
+const DEFAULTS = [
+["What is Avogadro’s number to three significant figures?",["6.02 × 10²³","3.00 × 10⁸","9.81 × 10²","1.60 × 10⁻¹⁹"],0,"It is approximately 6.022 × 10²³ entities per mole.","Avogadro’s number"],
+["What does one mole measure?",["A specific amount of substance","The mass of every atom in grams","The volume of every liquid","The temperature of a sample"],0,"A mole counts a specified number of particles.","Mole basics"],
+["How many particles are in 2.00 mol?",["1.204 × 10²⁴","3.01 × 10²³","6.02 × 10²²","2.00 × 10²³"],0,"Multiply moles by Avogadro’s number.","Calculations"],
+["How many moles are 12.044 × 10²³ particles?",["2.00 mol","0.500 mol","6.022 mol","12.044 mol"],0,"Divide the particle count by Avogadro’s number.","Calculations"],
+["How many atoms are in 1 mol of helium?",["6.022 × 10²³","4","1.00 × 10²³","6.022 × 10²⁴"],0,"One mole contains Avogadro’s number of specified particles.","Atoms"],
+["What is the molar mass of carbon-12?",["12 g/mol","6 g/mol","12 kg/mol","24 g/mol"],0,"Carbon-12 has a molar mass of about 12 grams per mole.","Molar mass"],
+["How many molecules are in 0.50 mol of water?",["3.01 × 10²³","1.204 × 10²⁴","6.02 × 10²²","0.50 × 10²²"],0,"0.50 × 6.022 × 10²³ ≈ 3.01 × 10²³.","Calculations"],
+["What is the SI-defined Avogadro constant?",["6.02214076 × 10²³ mol⁻¹","6.022 × 10⁻²³","9.81 × 10²³","3.00 × 10⁸"],0,"Its defined value is exactly 6.02214076 × 10²³ per mole.","Avogadro’s number"],
+["What is the SI unit for amount of substance?",["Mole (mol)","Gram (g)","Liter (L)","Kelvin (K)"],0,"The mole is the SI unit for amount of substance.","Mole basics"],
+["How many moles are in 18.0 g of water (18.0 g/mol)?",["1.00 mol","18.0 mol","0.100 mol","6.022 mol"],0,"Moles = mass ÷ molar mass.","Molar mass"],
+["One mole of O₂ contains how many O₂ molecules?",["6.022 × 10²³","3.011 × 10²³","2","1.204 × 10²⁴"],0,"One mole of any molecular substance contains Avogadro’s number of molecules.","Atoms and molecules"],
+["How many oxygen atoms are in 1 mol of O₂ molecules?",["1.204 × 10²⁴","6.022 × 10²³","3.011 × 10²³","2"],0,"Each O₂ molecule has two oxygen atoms.","Atoms and molecules"],
+["Which formula converts moles to particles?",["Particles = moles × Avogadro’s number","Moles = particles × molar mass","Particles = mass ÷ volume","Moles = temperature × pressure"],0,"Multiply moles by 6.022 × 10²³ particles/mol.","Calculations"],
+["3.011 × 10²³ atoms is about how many moles?",["0.500 mol","2.00 mol","5.00 mol","3.011 mol"],0,"That is half of Avogadro’s number.","Calculations"],
+["What is the approximate molar mass of CO₂?",["44.01 g/mol","28.01 g/mol","16.00 g/mol","12.01 g/mol"],0,"12.01 + 2(16.00) ≈ 44.01 g/mol.","Molar mass"],
+["How many sodium atoms are in 1 mol?",["6.022 × 10²³","23","1","6.022 × 10²²"],0,"One mole corresponds to Avogadro’s number of entities.","Atoms"],
+["What is the mass of 2.00 mol carbon-12?",["24.0 g","6.00 g","12.0 g","2.00 g"],0,"Mass = moles × molar mass = 2.00 × 12.0.","Molar mass"],
+["What best describes Avogadro’s number?",["Particles in one mole","Grams in every mole","Liters in any sample","Elements in the periodic table"],0,"It links microscopic particle counts to the mole.","Avogadro’s number"],
+["6.022 × 10²³ molecules represents how many moles?",["1.00 mol","6.022 mol","0.100 mol","10.0 mol"],0,"That particle count is one mole.","Calculations"],
+["What is the approximate molar mass of NaCl?",["58.44 g/mol","35.45 g/mol","22.99 g/mol","46.00 g/mol"],0,"Sodium plus chlorine is about 58.44 g/mol.","Molar mass"]
+].map(q => ({question:q[0],choices:q[1],answer:q[2],explanation:q[3],category:q[4]}));
+
+/* Proper number parsing: accepts 0, decimals, and negatives. Only empty or
+   non-numeric input falls back to the default. */
+function pnum(v,d){if(v==null||v==="")return d;const n=parseFloat(v);return isFinite(n)?n:d;}
+const DEFAULT_SETTINGS = {classroomMode:false,funMode:false,totalQuestions:15,checkpointSeconds:10,
+  questionMode:"race-progress",showAnswers:"instant",bypass:false,theme:"default",accent:"#8b5cf6",
+  wrongAnswerPenaltySeconds:3,goalAccuracy:80,goalTimeSeconds:0,
+  trackCount:5,attemptsPerTrack:5,lockBestScore:false,
+  shopEnabled:true,pointsPerCorrect:10,pointsPerTrackComplete:50,shopCostMultiplier:1,
+  allowPaints:true,allowPerformance:true,allowConsumables:true,allowCosmetics:true,
+  startingPoints:0,unlockAccuracy:0,requireFinish:true,allowSkip:false,skipQuestions:5,shadowMode:"off",
+  carAccelMult:1,carTopSpeedMult:1,carGripMult:1,carBrakeMult:1};
+
+/* ---------------- 🎮 game-mode presets ----------------
+   Each preset is a COMPLETE bundle over the fields it owns — switching from
+   one preset to another can never leave a stray value behind. Presets never
+   touch classroomMode, theme/accent, the run bank, phys-tune ranges, the
+   question bank, custom tracks or game tracks. */
+const PRESETS=[
+  {id:"raceday",icon:"🏁",name:"Race Day",desc:"Classic quiz racing: questions every 10s while racing, standard car, standard rewards.",
+   s:{funMode:false,questionMode:"race-progress",totalQuestions:15,checkpointSeconds:10,showAnswers:"instant",bypass:false,wrongAnswerPenaltySeconds:3,goalAccuracy:80,goalTimeSeconds:0,shadowMode:"off",carAccelMult:1,carTopSpeedMult:1,carGripMult:1,carBrakeMult:1,trackCount:5,attemptsPerTrack:5,lockBestScore:false,shopEnabled:true,startingPoints:0,pointsPerCorrect:10,pointsPerTrackComplete:50,shopCostMultiplier:1,allowPaints:true,allowPerformance:true,allowConsumables:true,allowCosmetics:true,unlockAccuracy:0,requireFinish:true,allowSkip:false,skipQuestions:5}},
+  {id:"study",icon:"📚",name:"Study Hall",desc:"Quiz-focused: more questions, more time between them, gentler goals, skipping allowed.",
+   s:{funMode:false,questionMode:"race-progress",totalQuestions:25,checkpointSeconds:20,showAnswers:"instant",bypass:false,wrongAnswerPenaltySeconds:5,goalAccuracy:70,goalTimeSeconds:0,shadowMode:"off",carAccelMult:1,carTopSpeedMult:1,carGripMult:1,carBrakeMult:1,trackCount:5,attemptsPerTrack:7,lockBestScore:false,shopEnabled:true,startingPoints:0,pointsPerCorrect:15,pointsPerTrackComplete:50,shopCostMultiplier:1,allowPaints:true,allowPerformance:true,allowConsumables:true,allowCosmetics:true,unlockAccuracy:0,requireFinish:true,allowSkip:true,skipQuestions:10}},
+  {id:"campaign",icon:"🎯",name:"Track Campaign",desc:"Tracks unlock one by one — students answer each track's quiz to open the next. Best for lasting progress.",
+   s:{funMode:false,questionMode:"tracks",totalQuestions:15,checkpointSeconds:10,showAnswers:"instant",bypass:false,wrongAnswerPenaltySeconds:3,goalAccuracy:80,goalTimeSeconds:0,shadowMode:"off",carAccelMult:1,carTopSpeedMult:1,carGripMult:1,carBrakeMult:1,trackCount:5,attemptsPerTrack:5,lockBestScore:true,shopEnabled:true,startingPoints:0,pointsPerCorrect:10,pointsPerTrackComplete:100,shopCostMultiplier:1,allowPaints:true,allowPerformance:true,allowConsumables:true,allowCosmetics:true,unlockAccuracy:60,requireFinish:true,allowSkip:false,skipQuestions:5}},
+  {id:"fun",icon:"🎉",name:"Fun Mode",desc:"No questions at all — free racing with every class feature. Garage income: a big starting balance and half-price upgrades.",
+   s:{funMode:true,questionMode:"race-progress",totalQuestions:15,checkpointSeconds:10,showAnswers:"instant",bypass:false,wrongAnswerPenaltySeconds:0,goalAccuracy:0,goalTimeSeconds:0,shadowMode:"fastest",carAccelMult:1.2,carTopSpeedMult:1.1,carGripMult:1.1,carBrakeMult:1.1,trackCount:5,attemptsPerTrack:5,lockBestScore:false,shopEnabled:true,startingPoints:500,pointsPerCorrect:0,pointsPerTrackComplete:0,shopCostMultiplier:0.5,allowPaints:true,allowPerformance:true,allowConsumables:true,allowCosmetics:true,unlockAccuracy:0,requireFinish:false,allowSkip:true,skipQuestions:5}},
+  {id:"arcade",icon:"⚡",name:"Arcade Rush",desc:"Fast cars: quicker engine, higher top speed, more grip — with richer rewards so the powers come sooner.",
+   s:{funMode:false,questionMode:"race-progress",totalQuestions:15,checkpointSeconds:8,showAnswers:"quiet",bypass:false,wrongAnswerPenaltySeconds:2,goalAccuracy:80,goalTimeSeconds:0,shadowMode:"fastest",carAccelMult:1.6,carTopSpeedMult:1.35,carGripMult:1.25,carBrakeMult:1.2,trackCount:7,attemptsPerTrack:5,lockBestScore:false,shopEnabled:true,startingPoints:0,pointsPerCorrect:20,pointsPerTrackComplete:100,shopCostMultiplier:1,allowPaints:true,allowPerformance:true,allowConsumables:true,allowCosmetics:true,unlockAccuracy:0,requireFinish:true,allowSkip:false,skipQuestions:5}},
+  {id:"hardcore",icon:"🔥",name:"Hardcore",desc:"Slow car, strict goals, a time cap and pricier upgrades — every point is earned.",
+   s:{funMode:false,questionMode:"race-progress",totalQuestions:20,checkpointSeconds:8,showAnswers:"quiet",bypass:false,wrongAnswerPenaltySeconds:10,goalAccuracy:90,goalTimeSeconds:300,shadowMode:"highest",carAccelMult:0.8,carTopSpeedMult:0.8,carGripMult:0.9,carBrakeMult:0.9,trackCount:7,attemptsPerTrack:3,lockBestScore:true,shopEnabled:true,startingPoints:0,pointsPerCorrect:10,pointsPerTrackComplete:150,shopCostMultiplier:1.5,allowPaints:true,allowPerformance:true,allowConsumables:true,allowCosmetics:true,unlockAccuracy:0,requireFinish:true,allowSkip:false,skipQuestions:5}}
+];
+let presetPick=null;   // selected preset id (not yet applied)
+/* Which preset (if any) matches the class's CURRENT saved settings? */
+function detectPreset(){
+  const s=(classDoc&&classDoc.settings)||{};
+  for(const p of PRESETS){
+    if(Object.keys(p.s).every(k=>s[k]===p.s[k]))return p;
+  }
+  return null;
+}
+function renderPresets(){
+  const grid=$("presetGrid");
+  if(!grid)return;
+  const cur=detectPreset();
+  $("presetCurrent").textContent=cur?cur.name:"Custom";
+  grid.innerHTML=PRESETS.map(p=>
+    `<button type="button" class="preset-btn${presetPick===p.id?" sel":""}${cur&&cur.id===p.id&&!presetPick?" sel":""}" data-preset="${p.id}">
+      <span class="p-icon">${p.icon}</span><span class="p-name">${p.name}</span>
+      <div class="p-desc">${p.desc}</div></button>`).join("");
+  $$("#presetGrid [data-preset]").forEach(b=>b.onclick=()=>{
+    presetPick=b.dataset.preset;
+    const p=PRESETS.find(x=>x.id===presetPick);
+    $("presetDesc").innerHTML=`<b>${p.icon} ${p.name}:</b> ${presetSummary(p)}`;
+    renderPresets();
+  });
+}
+/* One-line human summary of what the preset changes (relative to defaults). */
+function presetSummary(p){
+  const s=p.s;
+  const bits=[];
+  bits.push(s.funMode?"no questions":(s.questionMode==="tracks"?"tracks campaign":`${s.totalQuestions} questions / ${s.checkpointSeconds}s`));
+  if(s.questionMode==="tracks")bits.push(`${s.trackCount} tracks, ${s.attemptsPerTrack} attempts each`);
+  if(s.wrongAnswerPenaltySeconds)bits.push(`${s.wrongAnswerPenaltySeconds}s penalty per wrong answer`);
+  if(s.goalTimeSeconds)bits.push(`time cap ${s.goalTimeSeconds}s`);
+  if(s.carAccelMult!==1||s.carTopSpeedMult!==1)bits.push(`car ${s.carAccelMult}× accel / ${s.carTopSpeedMult}× top speed`);
+  if(s.shopCostMultiplier!==1)bits.push(`garage prices ${s.shopCostMultiplier}×`);
+  if(!s.pointsPerCorrect&&s.pointsPerTrackComplete)bits.push(`earn ${s.pointsPerTrackComplete} pts per track only`);
+  else if(s.pointsPerCorrect!==10||s.pointsPerTrackComplete!==50)bits.push(`earn ${s.pointsPerCorrect} pts per answer / ${s.pointsPerTrackComplete} per track`);
+  if(s.shadowMode!=="off")bits.push("class shadow on");
+  return bits.join(" · ")+". Anything not listed stays exactly as you set it.";
+}
+$("applyPresetBtn").onclick=async()=>{
+  if(!presetPick)return toast("Pick a preset first.");
+  const p=PRESETS.find(x=>x.id===presetPick);
+  if(!p)return;
+  if(!confirm(`Apply the ${p.name} preset? This saves ${Object.keys(p.s).length} class settings right away (your question bank, tracks and join code are untouched).`))return;
+  const code=currentCode;
+  if(!code)return toast("No class loaded.");
+  try{
+    const upd={};
+    for(const k of Object.keys(p.s))upd["settings."+k]=p.s[k];
+    if(p.s.questionMode==="tracks"){
+      try{upd.trackAssignment=buildTrackAssignment(classDoc.questionBank,p.s);}
+      catch(err){toast("Warning: "+err.message+" The preset was saved — add questions and re-save to lock in the track split.");}
+    }
+    await db.collection("classes").doc(code).update(upd);
+    presetPick=null;
+    $("presetDesc").textContent="Select a preset to see what it changes.";
+    /* The preset landed on the class it was aimed at — but if the teacher
+       switched classes while it saved, don't touch the NEW class's UI or
+       leaderboard with the OLD class's preset. */
+    if(currentCode!==code){toast(`${p.icon} ${p.name} saved — you switched classes while it applied.`);return;}
+    toast(`${p.icon} ${p.name} applied — settings are live for every student.`);
+    pruneLeaderboard(p.s);
+  }catch(e){toast("Could not apply: "+e.message);}
+};
+/* ❓ tooltip buttons: click/tap toggles, outside click closes, Esc closes. */
+document.addEventListener("click",e=>{
+  const t=e.target.closest(".tip");
+  if(t){e.stopPropagation();const was=t.classList.contains("open");$$(".tip.open").forEach(x=>x.classList.remove("open"));if(!was)t.classList.add("open");}
+  else $$(".tip.open").forEach(x=>x.classList.remove("open"));
+});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")$$(".tip.open").forEach(x=>x.classList.remove("open"));});
+
+let me = null;            // {teacherId,email}
+let currentCode = null;   // selected class code
+let classDoc = null;      // cached class data
+let resultsCache = [];    // latest results for CSV export
+let studentsCache = [];   // live roster docs
+let lbCache = [];         // live leaderboard docs
+let unsubs = [];
+
+/* Same name (case/spacing-insensitive) = same student. Everything roster-
+   related is merged by this key so duplicate logins show up as one person. */
+function normName(s){return String(s||"").toLowerCase().trim().replace(/\s+/g," ");}
+function hashStr(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(36);}
+function studentKey(name){return hashStr(normName(name));}
+function shuffle(a){for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+function esc(v){const A=String.fromCharCode(38);const M={"&":A+"amp;","<":A+"lt;",">":A+"gt;","'":A+"#39;"};M[String.fromCharCode(34)]=A+"quot;";return String(v??"").replace(/[&<>"']/g,c=>M[c]||c);}
+function toast(msg){$("toast").textContent=msg;$("toast").style.display="block";clearTimeout(toast.t);toast.t=setTimeout(()=>$("toast").style.display="none",2800);}
+function genCode(){const A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let c="";for(let i=0;i<6;i++)c+=A[Math.floor(Math.random()*A.length)];return c;}
+function when(ts){try{return new Date(ts).toLocaleString();}catch(e){return "";}}
+function fmtMs(ms){return ms==null?"—":`${Math.floor(ms/60000)}:${String(Math.floor(ms/1000)%60).padStart(2,"0")}.${String(ms%1000).padStart(3,"0")}`;}
+function goalSummary(s){
+  s=s||{};
+  const total=Math.max(1,parseInt(s.totalQuestions)||15);
+  const acc=(s.goalAccuracy!=null?s.goalAccuracy:80);
+  const gt=parseInt(s.goalTimeSeconds)||0;
+  if(s.questionMode==="tracks"){
+    const T=Math.max(1,Math.min(20,parseInt(s.trackCount)||5));
+    const per=Math.max(1,Math.ceil(total/T));
+    return `Tracks mode: ${T} tracks of ~${per} questions each · goal ${acc}%+ on a track's quiz and all its questions answered`+(gt?`, final time under ${fmtMs(gt*1000)}`:" (no time cap)");
+  }
+  return `Goal: answer all ${total} questions with ${acc}%+ correct`+(gt?` and a final time under ${fmtMs(gt*1000)} (race time + penalties)`:" (no time cap)");
+}
+function friendlyAuthError(e){
+  const c=e&&e.code||"";
+  if(c.includes("email-already-in-use"))return "That email is already registered — log in instead.";
+  if(c.includes("invalid-email"))return "That email doesn't look right.";
+  if(c.includes("weak-password"))return "Password must be at least 6 characters.";
+  if(c.includes("wrong-password")||c.includes("invalid-credential")||c.includes("user-not-found"))return "Wrong email or password.";
+  if(c.includes("operation-not-allowed"))return "Email/Password sign-in is disabled in your Firebase console (Authentication → Sign-in method).";
+  if(c.includes("network"))return "Network error — check your connection.";
+  return (e&&e.message)||"Sign-in failed.";
+}
+function ci(q){return typeof q.answer==="number"?q.answer:q.choices.findIndex(x=>String(x).toLowerCase()===String(q.answer).toLowerCase());}
+function validateBank(data){
+  if(!Array.isArray(data)||!data.length)throw Error("Question bank must be a non-empty array.");
+  return data.map((q,i)=>{
+    if(!q.question||!Array.isArray(q.choices)||q.choices.length<2)throw Error(`Question ${i+1} needs a question and at least two choices.`);
+    if(q.choices.length>4)throw Error(`Question ${i+1} has ${q.choices.length} choices — only 4 answer buttons are supported.`);
+    const item={question:String(q.question),choices:q.choices.map(String),answer:q.answer,
+      explanation:String(q.explanation||""),category:String(q.category||"")};
+    if(item.answer===undefined||item.answer===null)throw Error(`Question ${i+1} needs an answer.`);
+    if(typeof item.answer==="string"&&ci(item)<0)throw Error(`Question ${i+1} answer must match a choice or use a zero-based index.`);
+    if(typeof item.answer==="number"&&(!Number.isInteger(item.answer)||item.answer<0||item.answer>=item.choices.length))throw Error(`Question ${i+1} answer index is invalid.`);
+    return item;
+  });
+}
+function parseCSV(text){
+  const rows=[];let row=[],cell="",quoted=false;
+  for(let i=0;i<text.length;i++){const c=text[i];
+    if(c==='"'&&quoted&&text[i+1]==='"'){cell+='"';i++;}
+    else if(c==='"')quoted=!quoted;
+    else if(c===","&&!quoted){row.push(cell);cell="";}
+    else if((c==="\n"||c==="\r")&&!quoted){if(c==="\r"&&text[i+1]==="\n")i++;row.push(cell);if(row.some(v=>v.trim()))rows.push(row);row=[];cell="";}
+    else cell+=c;
+  }
+  row.push(cell);if(row.some(v=>v.trim()))rows.push(row);
+  if(rows.length<2)throw Error("CSV needs headers and at least one question.");
+  const headers=rows.shift().map(x=>x.trim().toLowerCase());
+  return rows.map(r=>{const o={};headers.forEach((h,i)=>o[h]=(r[i]||"").trim());
+    return {question:o.question,choices:o.choices?o.choices.split("|").map(x=>x.trim()):[o.a,o.b,o.c,o.d].filter(Boolean),
+      answer:/^\d+$/.test(o.answer||"")?Number(o.answer):o.answer,explanation:o.explanation,category:o.category};});
+}
+
+/* ---------------- PolyTrack import-code codec (v1n) ----------------
+   The game shares tracks as "v1n" export codes:
+     "v1n" + b64url(1 byte: encoded-name length) + encodeURIComponent(name)
+          + b64url(binary parts)
+   Binary = repeated [2B part-type id LE][4B count LE][count x 10B]:
+     3B x+2^23 | 3B y | 3B z+2^23 | 1B rotation(0-3).
+   The game stores a custom track in browser web storage as "v1_track_<name>"
+   with the RAW save-string (the code minus its v1n header and name). */
+const PT_PART_IDS=new Set([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51]);
+function ptB64uDecode(str){
+  str=String(str||"").replace(/-/g,"+").replace(/_/g,"/");
+  const pad=(4-str.length%4)%4;
+  if(pad)str+="=".repeat(pad);
+  const bin=atob(str);
+  const out=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)out[i]=bin.charCodeAt(i);
+  return out;
+}
+/* Validate a v1n code the way the game does (full binary walk).
+   Returns {name, saveString, parts} on success or {error} on failure. */
+function ptValidateTrackCode(code){
+  code=String(code||"").trim();
+  if(!code)return{error:"Empty code."};
+  if(!code.startsWith("v1n"))return{error:'Not a track code (must start with "v1n").'};
+  if(code.length>200000)return{error:"Track code is too large."};
+  let hdr;
+  try{hdr=ptB64uDecode(code.substring(3,5));}catch(e){return{error:"Bad code header."};}
+  if(hdr.length!==1)return{error:"Bad code header."};
+  const nameLen=hdr[0];
+  if(nameLen<1||code.length<5+nameLen)return{error:"Truncated code (track name)."};
+  let name;
+  try{name=decodeURIComponent(code.substring(5,5+nameLen));}catch(e){return{error:"Bad track-name encoding."};}
+  const saveString=code.substring(5+nameLen);
+  let bytes;
+  try{bytes=ptB64uDecode(saveString);}catch(e){return{error:"Track data is not valid base64."};}
+  let r=0,parts=0,hasStart=false,hasFinish=false;
+  while(r<bytes.length){
+    if(bytes.length-r<2)return{error:"Corrupt track data (part type)."};
+    const type=bytes[r]|bytes[r+1]<<8;r+=2;
+    if(!PT_PART_IDS.has(type))return{error:"Unknown part type ("+type+")."};
+    if(bytes.length-r<4)return{error:"Corrupt track data (part count)."};
+    const count=(bytes[r]|bytes[r+1]<<8|bytes[r+2]<<16|bytes[r+3]<<24)>>>0;r+=4;
+    if(count>100000)return{error:"Unreasonable part count."};
+    if(bytes.length-r<count*10)return{error:"Corrupt track data (truncated)."};
+    if(type===5&&count>0)hasStart=true;
+    if(type===6&&count>0)hasFinish=true;
+    parts+=count;r+=count*10;
+  }
+  if(parts<1)return{error:"Track has no parts."};
+  if(parts>50000)return{error:"Too many parts ("+parts+")."};
+  if(!hasStart)return{error:"No Start part — the car can't spawn."};
+  if(!hasFinish)return{error:"No Finish part — runs can't complete."};
+  if(!name||name.length>64)return{error:"Track name must be 1-64 characters."};
+  return{name,saveString,parts};
+}
+
+/* ---------------- auth ---------------- */
+$("tLoginBtn").onclick=async()=>{
+  try{const cred=await auth.signInWithEmailAndPassword($("tEmail").value.trim(),$("tPass").value);
+    me={teacherId:cred.user.uid,email:cred.user.email};afterLogin();}
+  catch(e){toast(friendlyAuthError(e));}
+};
+$("tRegisterBtn").onclick=async()=>{
+  try{const cred=await auth.createUserWithEmailAndPassword($("tEmail").value.trim(),$("tPass").value);
+    await db.collection("teachers").doc(cred.user.uid).set({email:cred.user.email,createdAt:Date.now()});
+    me={teacherId:cred.user.uid,email:cred.user.email};afterLogin();toast("Teacher account created.");}
+  catch(e){toast(friendlyAuthError(e));}
+};
+$("logoutBtn").onclick=async()=>{try{await auth.signOut();}catch(e){}me=null;teardown();show("authView");};
+auth.onAuthStateChanged(u=>{
+  if(u&&(!me)){me={teacherId:u.uid,email:u.email};afterLogin();}
+});
+function afterLogin(){
+  show("listView");loadClasses();
+  const m=location.search.match(/code=([A-Za-z0-9]+)/);
+  if(m)openClass(m[1].toUpperCase());
+}
+
+/* ---------------- class list ---------------- */
+async function loadClasses(){
+  try{
+    const snap=await db.collection("classes").where("teacherId","==",me.teacherId).get();
+    $("classList").innerHTML=snap.empty?'<div class="card"><div class="small">No classes yet — create one above.</div></div>':
+      snap.docs.map(d=>{const c=d.data();const on=c.settings&&c.settings.classroomMode;
+        return `<div class="card"><div class="classrow">
+        <div><b>${esc(c.name||d.id)}</b><div class="small">Code <b>${d.id}</b> · ${on?"<span style='color:var(--good)'>Classroom mode ON</span>":"Classroom mode off"}</div></div>
+        <div class="row" style="margin:0"><button data-code="${d.id}" class="openClass primary">Manage</button></div>
+        </div></div>`;}).join("");
+    $$("#classList .openClass").forEach(b=>b.onclick=()=>openClass(b.dataset.code));
+  }catch(e){toast("Could not load classes: "+e.message);}
+}
+
+$("createClassBtn").onclick=async()=>{
+  const name=$("newClassName").value.trim()||"My class";
+  let code=genCode();
+  try{
+    while((await db.collection("classes").doc(code).get()).exists)code=genCode();
+    await db.collection("classes").doc(code).set({
+      name,teacherId:me.teacherId,teacherName:me.email,createdAt:Date.now(),
+      settings:{...DEFAULT_SETTINGS},questionBank:structuredClone(DEFAULTS)
+    });
+    toast("Class created — join code "+code);
+    $("newClassName").value="";
+    openClass(code);
+  }catch(e){toast("Could not create class: "+e.message);}
+};
+
+/* ---------------- class management ---------------- */
+function teardown(){unsubs.forEach(u=>u());unsubs=[];currentCode=null;classDoc=null;resultsCache=[];olderCache=[];studentsCache=[];lbCache=[];}
+function show(id){["authView","listView","classView"].forEach(x=>$(x).classList.toggle("hidden",x!==id));}
+$("backBtn").onclick=()=>{teardown();show("listView");loadClasses();};
+
+function openClass(code){
+  teardown();currentCode=code;show("classView");
+  // Never carry an unsaved question bank from another class into this one.
+  const ed=$("bankEditor");ed.dataset.dirty="";ed.value="";
+  const ref=db.collection("classes").doc(code);
+  unsubs.push(ref.onSnapshot(s=>{
+    if(!s.exists){toast("This class no longer exists.");teardown();show("listView");return;}
+    classDoc=s.data();
+    $("cName").textContent=classDoc.name||code;
+    $("cCode").textContent=code;
+    renderMode();
+    renderSettings();
+    renderBank();
+  },err=>toast("Connection error: "+err.message)));
+  unsubs.push(ref.collection("students").onSnapshot(s=>{studentsCache=s.docs;renderStudents(s.docs);refreshFilterOptions();renderResults();},()=>{}));
+  unsubs.push(ref.collection("leaderboard").onSnapshot(s=>{lbCache=s.docs.map(d=>({id:d.id,...d.data()}));renderLb();},()=>{}));
+  subscribeResults();
+}
+let unsubResults=null, olderCache=[];
+let liveLastDoc=null;      // cursor of the live top page (latest 100)
+let historyCursor=null;   // cursor of the OLDEST loaded doc (older pages)
+let hasMore=true;
+let skipRetention=false;  // first snapshot after a (re)subscribe: don't retain
+function subscribeResults(){
+  if(unsubResults){unsubResults();unsubResults=null;}
+  olderCache=[];liveLastDoc=null;historyCursor=null;hasMore=true;skipRetention=true;
+  // One class-wide subscription: the per-student filter is applied client-side
+  // by NAME so all of a student's logins (same name = same person) are included.
+  const base=db.collection("classes").doc(currentCode).collection("results");
+  const apply=s=>{
+    const fresh=s.docs.map(d=>({id:d.id,...d.data()}));
+    const freshIds=new Set(fresh.map(r=>r.id));
+    // Rows that fall out of the live window (e.g. a new result pushed the
+    // window down) are RETAINED in the loaded history instead of vanishing —
+    // but never across a filter change (the first snapshot after a
+    // re-subscribe starts with a clean history).
+    if(!skipRetention){
+      const seenOld=new Set(olderCache.map(r=>r.id));
+      resultsCache.forEach(r=>{if(!freshIds.has(r.id)&&!seenOld.has(r.id))olderCache.push(r);});
+    }else skipRetention=false;
+    resultsCache=fresh;
+    liveLastDoc=s.docs[s.docs.length-1]||null;
+    // Once older-page loading has begun, only an older-page response may
+    // advance the history cursor or change the exhaustion state.
+    if(!historyCursor)hasMore=s.docs.length>=100;
+    renderResults();
+  };
+  unsubResults=base.orderBy("timestamp","desc").limit(100).onSnapshot(apply,err=>toast("Connection error: "+err.message));
+  unsubs.push(()=>{if(unsubResults){unsubResults();unsubResults=null;}});
+}
+
+function refreshFilterOptions(){
+  const sel=$("resultFilter");
+  const cur=sel.value;
+  sel.innerHTML='<option value="all">All students</option>'+
+    mergedStudents().map(s=>`<option value="${esc(s.name)}">${esc(s.name)}</option>`).join("");
+  if([...sel.options].some(o=>o.value===cur))sel.value=cur;
+}
+function renderMode(){
+  const on=classDoc.settings&&classDoc.settings.classroomMode;
+  $("modeBtn").textContent=on?"■ End class (Classroom mode)":"▶ Start class (Classroom mode)";
+  $("modeBtn").classList.toggle("danger",!!on);
+  $("modeStatus").innerHTML=on
+    ?"Classroom mode is <b style='color:var(--good)'>ON</b> — students can race and get questions."
+    :"Classroom mode is OFF — students can't race.";
+  $("tracksCard").classList.toggle("hidden",(classDoc.settings||{}).questionMode!=="tracks");
+}
+$("modeBtn").onclick=async()=>{
+  const on=classDoc.settings&&classDoc.settings.classroomMode;
+  try{await db.collection("classes").doc(currentCode).update({"settings.classroomMode":!on});}
+  catch(e){toast("Could not update: "+e.message);}
+};
+$("copyCodeBtn").onclick=()=>{
+  if(navigator.clipboard)navigator.clipboard.writeText(currentCode).then(()=>toast("Join code copied.")).catch(()=>toast("Clipboard unavailable."));
+};
+
+function renderSettings(){
+  const s=classDoc.settings||DEFAULT_SETTINGS;
+  $("sTotal").value=s.totalQuestions||15;
+  $("sInterval").value=s.checkpointSeconds||10;
+  $("sMode").value=s.questionMode||"race-progress";
+  $("sFeedback").value=s.showAnswers||"instant";
+  $("sBypass").value=s.bypass?"yes":"no";
+  $("sPenalty").value=s.wrongAnswerPenaltySeconds!=null?s.wrongAnswerPenaltySeconds:3;
+  $("sGoalAcc").value=(s.goalAccuracy!=null?s.goalAccuracy:80);
+  $("sFunMode").value=(s.funMode===true)?"on":"off";
+  $("sGoalTime").value=s.goalTimeSeconds||0;
+  $("sTheme").value=s.theme||"default";
+  $("sAccent").value=s.accent||"#8b5cf6";
+  $("sShadow").value=s.shadowMode||"off";
+  $("sCarAccel").value=s.carAccelMult!=null?s.carAccelMult:1;
+  $("sCarBrake").value=s.carBrakeMult!=null?s.carBrakeMult:1;
+  $("sCarTop").value=s.carTopSpeedMult!=null?s.carTopSpeedMult:1;
+  $("sCarGrip").value=s.carGripMult!=null?s.carGripMult:1;
+  $("sTrackCount").value=s.trackCount||5;
+  $("sAttempts").value=s.attemptsPerTrack||5;
+  $("sLockScore").value=s.lockBestScore?"yes":"no";
+  $("sTierSize").value=s.tierSize||0;
+  $("aShop").value=s.shopEnabled===false?"no":"yes";
+  $("aStartPts").value=s.startingPoints!=null?s.startingPoints:0;
+  $("aPtsOk").value=s.pointsPerCorrect!=null?s.pointsPerCorrect:10;
+  $("aRunsQ").value=s.runsPerCorrect!=null?s.runsPerCorrect:5;
+  $("aRunsEarn").value=(s.runsEnabled===false)?"no":"yes";
+  $("aRunsCarry").value=(s.runsCarryOver===false)?"no":"yes";
+  $("aPhysTune").value=(s.allowPhysTune===false)?"no":"yes";
+  // physRange: "min,max" text per key
+  const pr=s.physRange||{};
+  const PR_KEYS=[["mass","aPhysMass"],["weightDist","aPhysWeightDist"],["downforce","aPhysDownforce"],
+    ["suspStiff","aPhysSuspStiff"],["suspDamp","aPhysSuspDamp"],["steerSpeed","aPhysSteerSpeed"],
+    ["stability","aPhysStability"],["driftKeep","aPhysDriftKeep"],["airG","aPhysAirG"]];
+  PR_KEYS.forEach(([k,id])=>{
+    const mn=pr[k+"Min"],mx=pr[k+"Max"];
+    const el=$(id);if(!el)return;
+    el.value=(mn!=null&&mx!=null)?`${mn},${mx}`:"";
+  });
+  $("aPtsDone").value=s.pointsPerTrackComplete!=null?s.pointsPerTrackComplete:50;
+  $("aCostMult").value=s.shopCostMultiplier||1;
+  $("aCatPaint").value=s.allowPaints===false?"no":"yes";
+  $("aCatPerf").value=s.allowPerformance===false?"no":"yes";
+  $("aCatCons").value=s.allowConsumables===false?"no":"yes";
+  $("aCatCosm").value=s.allowCosmetics===false?"no":"yes";
+  $("aUnlockAcc").value=s.unlockAccuracy||0;
+  $("aReqFinish").value=(s.requireFinish==null?true:s.requireFinish)?"yes":"no";   // defaults ON for classes that never set it
+  $("aAllowSkip").value=s.allowSkip?"yes":"no";
+  $("aSkipQ").value=s.skipQuestions||5;
+  renderPresets();
+  renderCustomTracks();
+  renderGameTracks();
+  renderAssignInfo();
+}
+/* Custom tracks list + add/remove. Stored on the class doc as an object
+   keyed by index (Firestore has no nested arrays): {"1":{name,questions}}. */
+function renderCustomTracks(){
+  const cts=classDoc&&classDoc.customTracks;
+  const el=$("customTracksList");
+  if(!el)return;
+  const keys=cts?Object.keys(cts):[];
+  el.innerHTML=keys.length?keys.map(k=>
+    `<div class="small" style="border-top:1px solid var(--border);padding:6px 0"><b>⭐ ${esc(cts[k].name||"Custom track")}</b> — ${(cts[k].questions||[]).length} questions <button class="linklike" data-delct="${k}">Remove</button></div>`).join("")
+    :'<div class="small" style="margin-top:6px">No custom tracks yet.</div>';
+  $$("#customTracksList [data-delct]").forEach(b=>b.onclick=async()=>{
+    try{
+      const next={...cts};delete next[b.dataset.delct];
+      // re-key sequentially
+      const re={};Object.values(next).forEach((v,i)=>re[String(i+1)]=v);
+      await db.collection("classes").doc(currentCode).update({customTracks:re});
+      toast("Custom track removed.");
+    }catch(e){toast("Could not remove: "+e.message);}
+  });
+}
+$("addCustomTrackBtn").onclick=async()=>{
+  const name=$("ctName").value.trim();
+  if(!name)return toast("Give the custom track a name.");
+  let qs;
+  try{qs=JSON.parse($("ctQuestions").value||"[]");}catch(e){return toast("Questions JSON is invalid: "+e.message);}
+  if(!Array.isArray(qs)||!qs.length)return toast("Add at least one question.");
+  try{
+    const cts={...(classDoc&&classDoc.customTracks||{})};
+    cts[String(Object.keys(cts).length+1)]={name,questions:qs};
+    await db.collection("classes").doc(currentCode).update({customTracks:cts});
+    $("ctName").value="";$("ctQuestions").value="";
+    toast("Custom track added.");
+  }catch(e){toast("Could not add: "+e.message);}
+};
+/* Game tracks (PolyTrack import codes): stored on the class doc as a map
+   {slug-id: {name, code, parts}}. Students' game pages write them into the
+   game's own custom-track storage so they appear in the Play track list. */
+function gtSlug(name){
+  const s=String(name||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+  return s||"track";
+}
+function renderGameTracks(){
+  const el=$("gameTracksList");if(!el)return;
+  const gts=(classDoc&&classDoc.gameTracks)||{};
+  const keys=Object.keys(gts);
+  el.innerHTML=keys.length?keys.map(k=>{
+    const g=gts[k]||{};
+    return `<div class="small" style="border-top:1px solid var(--border);padding:6px 0"><b>🎮 ${esc(g.name||k)}</b> — ${g.parts||"?"} parts <button class="linklike" data-delgt="${esc(k)}">Remove</button></div>`;
+  }).join(""):'<div class="small" style="margin-top:6px">No game tracks yet — paste import codes below.</div>';
+  $$("#gameTracksList [data-delgt]").forEach(b=>b.onclick=async()=>{
+    const k=b.dataset.delgt;
+    const gtsNow=(classDoc&&classDoc.gameTracks)||{};
+    const nm=(gtsNow[k]&&gtsNow[k].name)||k;
+    if(!confirm(`Remove the game track "${nm}" from this class? It disappears from students' games.`))return;
+    try{
+      const myClass=currentCode;   // capture BEFORE the retryable transaction
+      await db.runTransaction(async tx=>{
+        const snap=await tx.get(db.collection("classes").doc(myClass));
+        if(!snap.exists)throw new Error("Class not found.");
+        const d=snap.data()||{};
+        const gts={...(d.gameTracks||{})};
+        if(!(k in gts))throw new Error("It was already removed.");
+        delete gts[k];
+        await tx.update(snap.ref,{gameTracks:gts});
+      });
+      toast("Game track removed — it disappears from students' games.");
+    }catch(e){toast("Could not remove: "+e.message);}
+  });
+}
+$("addGameTracksBtn").onclick=async()=>{
+  const lines=($("gtCodes").value||"").split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  if(!lines.length)return toast("Paste at least one track import code (one per line).");
+  if(lines.length>20)return toast("Add at most 20 track codes at a time.");
+  const parsed=[];
+  for(let i=0;i<lines.length;i++){
+    const v=ptValidateTrackCode(lines[i]);
+    if(v.error)return toast(`Track ${i+1}: ${v.error}`);
+    parsed.push({name:v.name,code:lines[i],parts:v.parts});
+  }
+  const names=new Set();
+  for(const v of parsed){
+    if(names.has(v.name))return toast(`You pasted two tracks named "${v.name}" — track names must be unique.`);
+    names.add(v.name);
+  }
+  try{
+    // Firestore transactions can retry — compute the counts INSIDE the
+    // transaction and use its return value (never increment across attempts).
+    const myClass=currentCode;
+    const res=await db.runTransaction(async tx=>{
+      const snap=await tx.get(db.collection("classes").doc(myClass));
+      if(!snap.exists)throw new Error("Class not found.");
+      const d=snap.data()||{};
+      const gts={...(d.gameTracks||{})};
+      let added=0,updated=0;
+      parsed.forEach(v=>{
+        let id=gtSlug(v.name),uid=id,i=2;
+        while(gts[uid]&&gts[uid].name!==v.name)uid=id+"-"+(i++); // slug clash with a different name
+        const existing=gts[uid];
+        if(existing&&existing.code===v.code)return;         // identical code — nothing to do
+        gts[uid]={name:v.name,code:v.code,parts:v.parts};
+        if(existing)updated++;else added++;
+      });
+      // Firestore caps a whole document at ~1MB — keep the game-track payload
+      // well under that so the rest of the class doc always fits.
+      const totalChars=Object.values(gts).reduce((n,g)=>n+String((g&&g.code)||"").length,0);
+      if(totalChars>600000)throw new Error("These tracks are too big combined (over 600k characters) — add fewer or smaller tracks.");
+      await tx.update(snap.ref,{gameTracks:gts});
+      return{added,updated};
+    });
+    $("gtCodes").value="";
+    toast(res.added||res.updated
+      ?`Saved — ${res.added} added, ${res.updated} updated. Students see ${(res.added+res.updated)===1?"it":"them"} in their game's Play track list.`
+      :"Those exact tracks are already in this class.");
+  }catch(e){toast("Could not save: "+e.message);}
+};
+/* Give existing students the starting-points balance (top-up, never reduces).
+   Transactional: all reads happen before any writes, and points earned between
+   read and write are kept. */
+$("grantStartBtn").onclick=async()=>{
+  const startPts=Math.max(0,parseInt($("aStartPts").value)||0);
+  try{
+    const snap=await db.collection("classes").doc(currentCode).collection("students").get();
+    let n=0;
+    for(const d of snap.docs){
+      const awarded=await db.runTransaction(async tx=>{
+        const fresh=await tx.get(d.ref);
+        const fd=fresh.data()||{};
+        if((fd.points||0)>=startPts)return false;
+        // Read the leaderboard entry FIRST (reads before writes), then update both.
+        const lbRef=db.collection("classes").doc(currentCode)
+          .collection("leaderboard").doc(studentKey(fd.name||""));
+        const lbSnap=await tx.get(lbRef);
+        if(lbSnap.exists)await tx.update(lbRef,{points:startPts});
+        await tx.update(d.ref,{points:startPts});
+        return true;
+      }).catch(e=>{toast("Top-up error: "+e.message);return false;});
+      if(awarded)n++;
+    }
+    toast(n?`Topped up ${n} student${n>1?"s":""} to ${startPts} pts.`:"Everyone already has at least that many points.");
+  }catch(e){toast("Could not top up: "+e.message);}
+};
+/* Advanced (Garage + unlock rules) settings save: merges into class settings. */
+$("saveAdvancedBtn").onclick=async()=>{
+  const shop={shopEnabled:$("aShop").value==="yes",
+    startingPoints:Math.max(0,Math.min(100000,parseInt($("aStartPts").value)||0)),
+    pointsPerCorrect:Math.max(0,Math.min(1000,parseInt($("aPtsOk").value)||0)),
+    runsPerCorrect:Math.max(0,Math.min(1000,parseInt($("aRunsQ").value)||0)),
+    runsEnabled:$("aRunsEarn").value!=="no",
+    runsCarryOver:$("aRunsCarry").value!=="no",
+    allowPhysTune:$("aPhysTune").value!=="no",
+    physRange:(function(){
+      const PR_KEYS=[["mass","aPhysMass"],["weightDist","aPhysWeightDist"],["downforce","aPhysDownforce"],
+        ["suspStiff","aPhysSuspStiff"],["suspDamp","aPhysSuspDamp"],["steerSpeed","aPhysSteerSpeed"],
+        ["stability","aPhysStability"],["driftKeep","aPhysDriftKeep"],["airG","aPhysAirG"]];
+      const out={};
+      PR_KEYS.forEach(([k,id])=>{
+        const el=$(id);if(!el)return;
+        const raw=(el.value||"").trim();
+        if(!raw)return;
+        const parts=raw.split(",").map(x=>parseFloat(x.trim()));
+        if(parts.length===2&&isFinite(parts[0])&&isFinite(parts[1])&&parts[0]<parts[1]){
+          out[k+"Min"]=parts[0];out[k+"Max"]=parts[1];
+        }
+      });
+      return out;
+    })(),
+    pointsPerTrackComplete:Math.max(0,Math.min(10000,parseInt($("aPtsDone").value)||0)),
+    shopCostMultiplier:Math.max(0.1,Math.min(10,parseFloat($("aCostMult").value)||1)),
+    allowPaints:$("aCatPaint").value==="yes",
+    allowPerformance:$("aCatPerf").value==="yes",
+    allowConsumables:$("aCatCons").value==="yes",
+    allowCosmetics:$("aCatCosm").value==="yes",
+    unlockAccuracy:Math.max(0,Math.min(100,parseInt($("aUnlockAcc").value)||0)),
+    requireFinish:$("aReqFinish").value==="yes",
+    allowSkip:$("aAllowSkip").value==="yes",
+    skipQuestions:Math.max(1,Math.min(100,parseInt($("aSkipQ").value)||5))};
+  try{
+    await db.collection("classes").doc(currentCode).update({[`settings`]:{...(classDoc.settings||{}),...shop}});
+    toast("Advanced settings saved.");
+  }catch(e){toast("Could not save: "+e.message);}
+};
+/* The same Advanced-settings save is reachable from the Unlocks tab and the
+   physics card — one handler, several buttons. */
+["saveAdvancedBtn2","saveAdvancedBtn3"].forEach(function(id){
+  try{var el=$(id);if(el)el.onclick=$("saveAdvancedBtn").onclick;}catch(e){}
+});
+function renderAssignInfo(){
+  const a=classDoc&&classDoc.trackAssignment;
+  const s=(classDoc&&classDoc.settings)||{};
+  if(s.questionMode!=="tracks"||!a)return;
+  const per=Object.keys(a).sort((x,y)=>(+x)-(+y)).map(k=>(a[k]||[]).length);
+  if(!per.length){$("trackAssignInfo").textContent="";return;}
+  $("trackAssignInfo").textContent=`Question split (locked in for this class so every student and every re-unlock gets the same questions): ${per.join(" + ")} = ${per.reduce((x,y)=>x+y,0)} questions.`;
+}
+/* Build the fixed per-track question assignment: the total questions are
+   split across the tracks (first tracks get the remainder when it doesn't
+   divide evenly). Saved on the class doc as an OBJECT keyed by track number
+   ("1", "2", …) because Firestore does not support nested arrays. This keeps
+   every student on the SAME questions per track, and re-unlocking reuses them. */
+function buildTrackAssignment(bank,settings){
+  const T=Math.max(1,Math.min(20,parseInt(settings.trackCount)||5));
+  const Q=Math.max(1,Math.min(100,parseInt(settings.totalQuestions)||15));
+  if(!Array.isArray(bank)||!bank.length)throw Error("Add questions to the bank first.");
+  const shuffled=shuffle(bank.slice());
+  const out={};let cur=0;
+  for(let t=1;t<=T;t++){
+    // Every track gets at least 1 question (wraps around the bank when there
+    // are fewer questions than tracks, so no track is ever un-unlockable).
+    const n=Math.max(1,Math.floor(Q/T)+(t<=Q%T?1:0));
+    const arr=[];
+    for(let i=0;i<n;i++){arr.push(shuffled[cur%shuffled.length]);cur++;}
+    out[String(t)]=arr;
+  }
+  return out;
+}
+$("saveSettingsBtn").onclick=async()=>{
+  const settings={
+    classroomMode:!!(classDoc.settings&&classDoc.settings.classroomMode),
+    totalQuestions:Math.max(1,Math.min(100,parseInt($("sTotal").value)||15)),
+    checkpointSeconds:Math.max(3,Math.min(3600,parseInt($("sInterval").value)||10)),
+    questionMode:$("sMode").value,
+    showAnswers:$("sFeedback").value,
+    bypass:$("sBypass").value==="yes",
+    wrongAnswerPenaltySeconds:Math.max(0,Math.min(300,parseInt($("sPenalty").value)||0)),
+    goalAccuracy:pnum($("sGoalAcc").value,80),
+    funMode:($("sFunMode").value==="on"),
+    goalTimeSeconds:Math.max(0,Math.min(3600,parseInt($("sGoalTime").value)||0)),
+    theme:$("sTheme").value,
+    accent:$("sAccent").value,
+    shadowMode:$("sShadow").value||"off",
+    carAccelMult:(()=>{let v=pnum($("sCarAccel").value,1);return (v<0)?0:v;})(),
+    carBrakeMult:(()=>{let v=pnum($("sCarBrake").value,1);return (v<0)?0:v;})(),
+    carTopSpeedMult:(()=>{let v=pnum($("sCarTop").value,1);return (v<0)?0:v;})(),
+    carGripMult:(()=>{let v=pnum($("sCarGrip").value,1);return (v<0)?0:v;})(),
+    trackCount:Math.max(1,Math.min(20,parseInt($("sTrackCount").value)||5)),
+    attemptsPerTrack:Math.max(1,Math.min(100,parseInt($("sAttempts").value)||5)),
+    lockBestScore:$("sLockScore").value==="yes",
+    tierSize:Math.max(0,Math.min(20,parseInt($("sTierSize").value)||0))
+  };
+  try{
+    /* MERGE into the existing settings — replacing the whole object would wipe
+       out the Garage / unlock / custom-track settings saved elsewhere. */
+    const upd={settings:{...(classDoc.settings||{}),...settings}};
+    if(settings.questionMode==="tracks"){
+      // Build the fixed per-track split — but NEVER block the settings save:
+      // if the bank is empty, save anyway and warn; the student side falls back
+      // to a split of the bank once questions are added.
+      try{
+        upd.trackAssignment=buildTrackAssignment(classDoc.questionBank,settings);
+      }catch(err){
+        toast("Warning: "+err.message+" The mode was saved — add questions and re-save to lock in the track split.");
+      }
+    }
+    await db.collection("classes").doc(currentCode).update(upd);
+    toast("Settings saved — they apply to every student in this class.");
+    pruneLeaderboard(settings);
+  }
+  catch(e){toast("Could not save: "+e.message);}
+};
+$("saveTracksBtn").onclick=()=>{
+  const v=$("sMode").value;
+  if(v!=="tracks"){$("sMode").value="tracks";}
+  $("saveSettingsBtn").click();
+};
+/* If the goal got stricter, leaderboard entries that no longer qualify come
+   off the board automatically. (Entries are judged against their OWN run's
+   question count — in Tracks mode that's the track's quiz, not the class-wide
+   total.) */
+async function pruneLeaderboard(settings){
+  if(!currentCode)return;
+  const goal=pnum(settings.goalAccuracy,80);
+  const timeCap=(parseInt(settings.goalTimeSeconds)||0)*1000;
+  try{
+    const snap=await db.collection("classes").doc(currentCode).collection("leaderboard").get();
+    const dels=[];
+    snap.docs.forEach(d=>{
+      const e=d.data()||{};
+      const total=e.total||0;
+      const attempted=(e.attempted!=null?e.attempted:(e.answered!=null?e.answered:0));
+      const noLonger=total<=0
+        ||(e.score??0)<total*goal/100
+        ||attempted<total
+        ||(timeCap&&!(e.finalMs!=null&&e.finalMs<=timeCap));
+      if(noLonger)dels.push(d.ref.delete());
+    });
+    if(dels.length){await Promise.all(dels);toast(`${dels.length} leaderboard entr${dels.length===1?"y":"ies"} no longer meet the new goal and were removed.`);}
+  }catch(e){toast("Could not re-check the leaderboard against the new goal: "+e.message);}
+};
+
+/* ---------------- question bank ---------------- */
+function renderBank(){
+  const bank=Array.isArray(classDoc.questionBank)?classDoc.questionBank:[];
+  if(!$("bankEditor").dataset.dirty)$("bankEditor").value=JSON.stringify(bank,null,2);
+  $("bankCount").textContent=`${bank.length} questions in the class bank.`;
+}
+$("bankEditor").addEventListener("input",()=>$("bankEditor").dataset.dirty="1");
+$("applyBankBtn").onclick=async()=>{
+  try{
+    const bank=validateBank(JSON.parse($("bankEditor").value));
+    await db.collection("classes").doc(currentCode).update({questionBank:bank});
+    $("bankEditor").dataset.dirty="";toast("Question bank saved — students get these questions now.");
+  }catch(e){toast(e.message);}
+};
+$("defaultsBtn").onclick=()=>{
+  $("bankEditor").value=JSON.stringify(structuredClone(DEFAULTS),null,2);
+  $("bankEditor").dataset.dirty="1";toast("Defaults loaded — press Save question bank to apply.");
+};
+$("exportBtn").onclick=()=>{
+  const blob=new Blob([$("bankEditor").value],{type:"application/json"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download="question-bank.json";a.click();URL.revokeObjectURL(url);
+};
+$("importBtn").onclick=()=>$("importFile").click();
+$("importFile").onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  try{
+    const txt=await f.text();
+    const data=f.name.toLowerCase().endsWith(".csv")?parseCSV(txt):JSON.parse(txt);
+    $("bankEditor").value=JSON.stringify(validateBank(data),null,2);
+    $("bankEditor").dataset.dirty="1";toast("Imported — press Save question bank to apply.");
+  }catch(err){toast("Import failed: "+err.message);}
+  e.target.value="";
+};
+
+/* ---------------- students & results ---------------- */
+/* Merge roster docs by normalized name: "Conner F" joined from two devices
+   shows as ONE student (max score, summed races, both records kept). */
+function mergedStudents(){
+  const map=new Map();
+  studentsCache.forEach(d=>{
+    const s=d.data();const k=normName(s.name||"Student");
+    if(!map.has(k))map.set(k,{name:s.name,joinedAt:s.joinedAt,score:0,answered:0,races:0,track:null,tracksDoneSet:new Set(),ids:[]});
+    const m=map.get(k);
+    m.score=Math.max(m.score,s.score??0);
+    m.answered=Math.max(m.answered,s.answered??0);
+    m.races+=(s.races??0);
+    m.joinedAt=Math.min(m.joinedAt||Infinity,s.joinedAt||Infinity);
+    if(s.track)m.track=Math.max(m.track||0,s.track);
+    // UNION of completed tracks across same-name logins: if one login finished
+    // Track 1 and another finished Track 2, the student completed BOTH.
+    Object.entries(s.tracks||{}).forEach(([tk,tv])=>{if(tv&&tv.completed)m.tracksDoneSet.add(tk);});
+    m.ids.push(d.id);
+  });
+  const list=[...map.values()].map(m=>({...m,tracksDone:m.tracksDoneSet.size}));
+  return list.sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+}
+function renderStudents(docs){
+  const list=mergedStudents();
+  $("studentCount").textContent=list.length?`(${list.length} student${list.length===1?"":"s"}, ${docs.length} login${docs.length===1?"":"s"})`:"";
+  $("studentRows").innerHTML=list.length?"":'<tr><td colspan="7" class="small">No students have joined yet.</td></tr>';
+  list.forEach(s=>{
+    const tr=document.createElement("tr");
+    const T=isTracks()?totalTracksWithCustom():0;
+    const trackCell=isTracks()?`${s.tracksDone||0}/${T} done`:(s.track??"—");
+    tr.innerHTML=`<td><button class="linklike" data-sname="${esc(s.name)}" title="See this student's races"><b>${esc(s.name)}</b></button></td><td class="small">${when(s.joinedAt)}</td>
+      <td>${s.score}</td><td>${s.answered}</td><td>${s.races}</td><td>${trackCell}</td>
+      <td><button class="linklike" data-del="${esc(s.ids.join(","))}">Remove</button></td>`;
+    $("studentRows").appendChild(tr);
+  });
+  $$("#studentRows [data-sname]").forEach(b=>b.onclick=()=>{
+    $("resultFilter").value=b.dataset.sname;$("onlyFinish").value="all";
+    subscribeResults();
+    $("resultRows").scrollIntoView({behavior:"smooth"});
+  });
+  $$("#studentRows [data-del]").forEach(b=>b.onclick=async()=>{
+    if(!confirm(`Remove ${b.dataset.del.split(",").length>1?"ALL logins of ":""}this student from the class? Their saved results are kept.`))return;
+    try{
+      for(const id of b.dataset.del.split(","))await db.collection("classes").doc(currentCode).collection("students").doc(id).delete();
+    }catch(e){toast("Could not remove: "+e.message);}
+  });
+}
+
+let displayedRows=[];
+function renderResults(){
+  const filter=$("resultFilter").value||"all";
+  const runType=$("onlyFinish").value||"finish";
+  const sort=$("resultSort").value||"new";
+  let rows=resultsCache.slice();
+  if(filter!=="all")rows=rows.filter(r=>normName(r.studentName)===normName(filter));
+  if(olderCache.length){
+    const seen=new Set(rows.map(r=>r.id));
+    olderCache.forEach(r=>{if(!seen.has(r.id)&&(filter==="all"||normName(r.studentName)===normName(filter))){rows.push(r);seen.add(r.id);}});
+    rows.sort((a,b)=>((b.timestamp??0)-(a.timestamp??0)));
+  }
+  if(runType==="finish")rows=rows.filter(r=>r.endedBy==="finish");
+  if(sort==="fast")rows.sort((a,b)=>((a.finalMs??Infinity)-(b.finalMs??Infinity)));
+  $("resultCount").textContent=rows.length?`(${rows.length} shown)`:"";
+  $("loadMoreBtn").disabled=!hasMore;
+  $("resultRows").innerHTML=rows.length?"":'<tr><td colspan="8" class="small">No runs match this filter yet.</td></tr>';
+  displayedRows=rows;
+  rows.forEach(r=>{
+    const i=rows.indexOf(r);
+    const tr=document.createElement("tr");
+    const ended=r.endedBy==="finish"?'<span class="pill good">Finish line</span>'
+      :r.endedBy==="restart"?'<span class="pill mut">Restarted/quit</span>'
+      :r.endedBy==="quiz-complete"?'<span class="pill mut">Quiz complete</span>':'<span class="pill mut">—</span>';
+    tr.innerHTML=`<td><b>${esc(r.studentName||"")}</b>${r.track?` <span class="small">(T${r.track})</span>`:""}</td>
+      <td>${r.score??0}/${r.total??0} <span class="small">(${r.percent??0}%)</span></td>
+      <td><b>${esc(r.raceTimeText||"—")}</b></td>
+      <td>${r.penaltySeconds?`+${r.penaltySeconds}s`:"—"}</td>
+      <td><b>${esc(r.finalTimeText||"—")}</b></td>
+      <td>${ended}</td>
+      <td class="small">${when(r.timestamp)}</td>
+      <td><button class="linklike" data-shot="${i}">${(r.replayFrames&&r.replayFrames.length)?"View replay":(r.screenshot?"View evidence":"Review answers")}</button></td>`;
+    $("resultRows").appendChild(tr);
+  });
+  $$("#resultRows [data-shot]").forEach(b=>b.onclick=()=>{
+    const r=displayedRows[+b.dataset.shot];
+    stopReplay();$("replayWrap").classList.add("hidden");
+    $("shotImg").classList.toggle("hidden",!r.screenshot);
+    if(r.screenshot)$("shotImg").src=r.screenshot;
+    if(r.replayFrames&&r.replayFrames.length)showReplay(r.replayFrames,r.replayTimes);
+    $("shotAnswers").innerHTML=(r.answers&&r.answers.length?r.answers.map((a,i)=>
+      `<div style="margin:6px 0"><b>${i+1}. ${esc(a.q)}</b>
+       <div class="small" style="margin:0">Their answer: ${esc(a.chosen)} — ${a.ok?'<span style="color:var(--good)">correct</span>':'<span style="color:var(--bad)">wrong</span>'} · correct answer: ${esc(a.correct)}</div></div>`).join("")
+      :'<div class="small">No per-question data for this run.</div>');
+    $("shotModal").classList.remove("hidden");
+  });
+}
+let replayTimer=null,replayFrames=[],replayTimes=null;
+function stopReplay(){if(replayTimer){clearTimeout(replayTimer);replayTimer=null;}const b=$("replayPlayBtn");if(b)b.textContent="▶ Play replay";}
+/* Timestamp-aware flipbook: frames step at their recorded race-time offsets
+   (4x speed), so the replay moves like the run did. Runs saved before
+   timestamps existed fall back to a fixed cadence. */
+function showReplay(frames,times){
+  window.__stopReplay=stopReplay;
+  stopReplay();
+  $("replayWrap").classList.add("hidden");
+  if(!frames||!frames.length)return;
+  $("replayWrap").classList.remove("hidden");
+  const img=$("replayImg"),btn=$("replayPlayBtn");
+  replayFrames=frames;
+  replayTimes=Array.isArray(times)&&times.length===frames.length?times:null;
+  img.src=replayFrames[0];
+  btn.textContent="▶ Play replay";
+  btn.onclick=()=>{
+    if(replayTimer){stopReplay();return;}
+    const SPEED=4,FALLBACK=250,LOOP_PAUSE=1200;
+    const step=(i,wait)=>{replayTimer=setTimeout(()=>{
+      const n=(i+1)%replayFrames.length;
+      img.src=replayFrames[n];
+      let d=FALLBACK;
+      if(replayTimes){
+        const a=replayTimes[n],b=replayTimes[(n+1)%replayTimes.length];
+        if(Number.isFinite(a)&&Number.isFinite(b)&&b>a)d=Math.max(60,(b-a)/SPEED);
+      }
+      if(n===replayFrames.length-1)d=LOOP_PAUSE; // wrap back to the first frame
+      step(n,d);
+    },wait);};
+    btn.textContent="⏸ Stop replay";
+    /* First transition: wait the recorded gap to frame 1 (not the fallback). */
+    let first=FALLBACK;
+    if(replayTimes&&Number.isFinite(replayTimes[0])&&Number.isFinite(replayTimes[1])&&replayTimes[1]>replayTimes[0])first=Math.max(60,(replayTimes[1]-replayTimes[0])/SPEED);
+    step(0,replayFrames.length>1?first:0);
+  };
+}
+/* Runs list for one leaderboard student: every recorded run with its replay. */
+async function viewLbRuns(name){
+  const all=await loadAllResults();
+  const runs=all.filter(r=>normName(r.studentName||"")===normName(name))
+    .sort((a,b)=>((b.timestamp??0)-(a.timestamp??0))).slice(0,25);
+  if(!runs.length)return toast("No recorded runs found for that student.");
+  $("shotImg").classList.add("hidden");
+  $("shotAnswers").innerHTML=`<b>${esc(name)} — recorded runs (newest first)</b>`+runs.map(r=>
+    `<div class="small" style="border-top:1px solid #334155;padding-top:6px;margin-top:6px">
+      ${when(r.timestamp)} · Track ${r.track||"—"} · ${r.raceTimeText||"—"}
+      (final ${r.finalTimeText||"—"}) · score ${r.score||0}/${r.total||0}
+      · ended by ${r.endedBy||"unknown"}
+      ${r.replayFrames&&r.replayFrames.length?`<button class="linklike" data-runreplay="${r.id}">View replay</button>`:"(no replay saved)"}
+    </div>`).join("");
+  $("replayWrap").classList.add("hidden");
+  $("shotModal").classList.remove("hidden");
+  $$("#shotAnswers [data-runreplay]").forEach(b=>b.onclick=()=>{
+    const run=runs.find(x=>x.id===b.dataset.runreplay);
+    if(!run)return;
+    $("shotImg").classList.add("hidden");
+    showReplay(run.replayFrames,run.replayTimes);
+  });
+}
+
+function renderLb(){
+  $("lbGoalText").textContent=goalSummary(classDoc&&classDoc.settings);
+  $("lbCount").textContent=lbCache.length?`(${lbCache.length})`:"";
+  // Tracks mode: a COMPLETION board — no rank numbers. Students are listed by
+  // accuracy, then total time. Otherwise ranked by final time.
+  const tracks=isTracks();
+  $("lbRankHead").style.display=tracks?"none":"";
+  $("lbTimeHead").textContent=tracks?"Total time (all tracks)":"Final time";
+  const rows=lbCache.slice().sort((a,b)=>
+    tracks?(((b.percent??0)-(a.percent??0))||((a.finalMs??Infinity)-(b.finalMs??Infinity)))
+          :((a.finalMs??Infinity)-(b.finalMs??Infinity)));
+  $("lbRows").innerHTML=rows.length?"":'<tr><td colspan="9" class="small">Nobody has met the goal yet.</td></tr>';
+  rows.forEach((r,i)=>{
+    const tr=document.createElement("tr");
+    const nameCell=`<b${r.nameColor?` style="color:${r.nameColor}"`:""}>${esc(r.name||"")}</b> ${esc(r.flair||"")}`;
+    tr.innerHTML=(tracks?"":`<td><b>${i+1}</b></td>`)+`<td>${nameCell}</td><td>${esc(trackLabel(r.track))}</td>
+      <td>${r.score??0}/${r.total??0} <span class="small">(${r.percent??0}%)</span></td>
+      <td><b>${esc(r.finalTimeText||"—")}</b></td><td>${esc(r.raceTimeText||"—")}</td>
+      <td>${r.points||0} pts</td>
+      <td class="small">${when(r.updatedAt)}</td>
+      <td><button class="linklike" data-lbruns="${esc(r.name||"")}">View runs</button></td>`;
+    $("lbRows").appendChild(tr);
+  });
+  $$("#lbRows [data-lbruns]").forEach(b=>b.onclick=()=>viewLbRuns(b.dataset.lbruns));
+}
+function isTracks(){return (classDoc&&classDoc.settings||{}).questionMode==="tracks";}
+/* Track label: numbered tracks are "Track N"; teacher CUSTOM tracks (numbers
+   above the track count) get their name. */
+function trackLabel(n){
+  if(n==null)return "—";
+  const s=(classDoc&&classDoc.settings)||{};
+  const base=Math.max(1,Math.min(20,parseInt(s.trackCount)||5));
+  if(n<=base)return "Track "+n;
+  const cts=(classDoc&&classDoc.customTracks)||{};
+  const ct=cts[String(n-base)];
+  return (ct&&ct.name)?"⭐ "+ct.name:"Track "+n;
+}
+function totalTracksWithCustom(){
+  const s=(classDoc&&classDoc.settings)||{};
+  const base=Math.max(1,Math.min(20,parseInt(s.trackCount)||5));
+  return base+((classDoc&&classDoc.customTracks)?Object.keys(classDoc.customTracks).length:0);
+}
+$("clearLbBtn").onclick=async()=>{
+  if(!confirm("Clear the whole class leaderboard?"))return;
+  try{
+    const snap=await db.collection("classes").doc(currentCode).collection("leaderboard").get();
+    const batch=db.batch();
+    snap.docs.forEach(d=>batch.delete(d.ref));
+    await batch.commit();toast("Leaderboard cleared.");
+  }catch(e){toast("Could not clear: "+e.message);}
+};
+$("resultFilter").onchange=subscribeResults;
+$("loadMoreBtn").onclick=async()=>{
+  if(!currentCode)return;
+  const cursor=historyCursor||liveLastDoc;
+  if(!cursor){toast("No runs to load yet.");return;}
+  const q=db.collection("classes").doc(currentCode).collection("results").orderBy("timestamp","desc");
+  try{
+    const snap=await q.startAfter(cursor).limit(100).get();
+    const seen=new Set([...resultsCache,...olderCache].map(r=>r.id));
+    snap.docs.forEach(d=>{if(!seen.has(d.id))olderCache.push({id:d.id,...d.data()});});
+    historyCursor=snap.docs[snap.docs.length-1]||historyCursor||liveLastDoc;
+    hasMore=snap.docs.length>=100;
+    renderResults();
+  }catch(e){toast("Could not load older runs: "+e.message);}
+};
+$("onlyFinish").onchange=renderResults;
+$("resultSort").onchange=renderResults;
+$("csvBtn").onclick=()=>{
+  if(!resultsCache.length)return toast("No results to export.");
+  const head="Student,Score,Total,Percent,Answered,Race time (text),Race time (ms),Penalty seconds,Final time (text),Final time (ms),How it ended,When\n";
+  const body=resultsCache.map(r=>[r.studentName,r.score,r.total,r.percent,r.answered,r.raceTimeText,
+    r.raceTimeMs??"",r.penaltySeconds??"",r.finalTimeText??"",r.finalMs??"",r.endedBy,when(r.timestamp)]
+    .map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\n");
+  const blob=new Blob([head+body],{type:"text/csv"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download=`polytrack-results-${currentCode}.csv`;a.click();URL.revokeObjectURL(url);
+};
+$("clearResultsBtn").onclick=async()=>{
+  if(!confirm("Delete ALL race results for this class? This can't be undone."))return;
+  try{
+    const snap=await db.collection("classes").doc(currentCode).collection("results").get();
+    const batch=db.batch();
+    snap.docs.forEach(d=>batch.delete(d.ref));
+    await batch.commit();toast("Results cleared.");
+  }catch(e){toast("Could not clear: "+e.message);}
+};
+$("deleteClassBtn").onclick=async()=>{
+  if(!confirm("Delete this class, its students, and all results? This can't be undone."))return;
+  try{
+    const ref=db.collection("classes").doc(currentCode);
+    for(const col of ["students","results"]){
+      const snap=await ref.collection(col).get();
+      const batch=db.batch();
+      snap.docs.forEach(d=>batch.delete(d.ref));
+      await batch.commit();
+    }
+    await ref.delete();
+    toast("Class deleted.");teardown();show("listView");loadClasses();
+  }catch(e){toast("Could not delete: "+e.message);}
+};
+
+/* ---------------- teacher summary ----------------
+   Builds a report from the COMPLETE results history (not just the latest 100):
+   1) students who finished their track (score + time),
+   2) students who have NOT answered all their questions (incl. no runs at all).
+   Duplicate-name logins are merged into one student. */
+async function loadAllResults(){
+  const ref=db.collection("classes").doc(currentCode).collection("results");
+  const all=[];let last=null;
+  for(let guard=0;guard<50;guard++){
+    let q=ref.orderBy("timestamp","desc").limit(300);
+    if(last)q=q.startAfter(last);
+    const snap=await q.get();
+    all.push(...snap.docs.map(d=>({id:d.id,...d.data()})));
+    last=snap.docs[snap.docs.length-1]||null;
+    if(snap.docs.length<300)break;
+  }
+  return all;
+}
+function bestRun(runs){
+  // Best = higher score, tie broken by faster final time.
+  return runs.slice().sort((a,b)=>((b.score??0)-(a.score??0))||((a.finalMs??Infinity)-(b.finalMs??Infinity)))[0];
+}
+$("summaryBtn").onclick=async()=>{
+  if(!currentCode)return;
+  $("summaryBody").innerHTML='<div class="small">Loading every saved run…</div>';
+  try{
+    const all=await loadAllResults();
+    const s=(classDoc&&classDoc.settings)||{};
+    const tracks=isTracks();
+    const T=tracks?totalTracksWithCustom():1;
+    const perTrack=tracks?Math.max(1,Math.ceil(Math.max(1,parseInt(s.totalQuestions)||15)/T)):Math.max(1,parseInt(s.totalQuestions)||15);
+    // Group all runs by merged student name.
+    const groups=new Map();
+    all.forEach(r=>{
+      const k=normName(r.studentName||"");
+      if(!k)return;
+      if(!groups.has(k))groups.set(k,[]);
+      groups.get(k).push(r);
+    });
+    const roster=mergedStudents();
+    const finishers=[],incomplete=[];
+    const seen=new Set();
+    roster.forEach(stu=>{
+      const k=normName(stu.name);
+      seen.add(k);
+      const runs=groups.get(k)||[];
+      // A "finished" run: reached the finish line AND answered every question.
+      const done=runs.filter(r=>r.endedBy==="finish"&&(r.attempted??r.answered??r.total??0)>=(r.total??0));
+      if(done.length){
+        const b=bestRun(done);
+        finishers.push({name:stu.name,track:b.track||null,score:b.score??0,total:b.total??0,
+          percent:b.percent??0,time:b.finalTimeText||b.raceTimeText||"—",runs:runs.length,tracksDone:stu.tracksDone||0});
+      }else{
+        const maxAns=runs.length?Math.max(...runs.map(r=>(r.attempted??r.answered??0))):0;
+        const need=runs.length?(runs[0].total||perTrack):perTrack;
+        incomplete.push({name:stu.name,answered:maxAns,need,runs:runs.length});
+      }
+    });
+    // Runs from students no longer on the roster are still reported.
+    groups.forEach((runs,k)=>{
+      if(seen.has(k))return;
+      const done=runs.filter(r=>r.endedBy==="finish"&&(r.attempted??r.answered??r.total??0)>=(r.total??0));
+      if(done.length){
+        const b=bestRun(done);
+        // Removed-from-roster students: derive completed tracks from their runs.
+        const doneT=new Set(done.map(r=>r.track).filter(Boolean)).size;
+        finishers.push({name:b.studentName||k,track:b.track||null,score:b.score??0,total:b.total??0,
+          percent:b.percent??0,time:b.finalTimeText||b.raceTimeText||"—",runs:runs.length,tracksDone:doneT});
+      }else{
+        incomplete.push({name:runs[0].studentName||k,answered:Math.max(...runs.map(r=>(r.attempted??r.answered??0))),
+          need:runs[0].total||perTrack,runs:runs.length});
+      }
+    });
+    finishers.sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+    incomplete.sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+    const finHtml=finishers.length?`<table><thead><tr><th>Student</th>${tracks?"<th>Track</th><th>Tracks done</th>":""}<th>Score</th><th>Time</th><th>Runs</th></tr></thead><tbody>`+
+      finishers.map(f=>`<tr><td><b>${esc(f.name)}</b></td>${tracks?`<td>${f.track?"Track "+f.track:"—"}</td><td>${f.tracksDone||0}/${T}</td>`:""}<td>${f.score}/${f.total} <span class="small">(${f.percent}%)</span></td><td><b>${esc(f.time)}</b></td><td>${f.runs}</td></tr>`).join("")+
+      "</tbody></table>"
+      :'<div class="small">No student has finished a track yet.</div>';
+    const incHtml=incomplete.length?`<table><thead><tr><th>Student</th><th>Questions answered</th><th>Runs saved</th></tr></thead><tbody>`+
+      incomplete.map(f=>`<tr><td><b>${esc(f.name)}</b></td><td>${f.answered} of ${f.need}</td><td>${f.runs}</td></tr>`).join("")+
+      "</tbody></table>"
+      :'<div class="small">Everyone has answered all their questions.</div>';
+    $("summaryBody").innerHTML=`
+      <h2>Finished (${finishers.length})</h2>${finHtml}
+      <h2>Not finished — questions incomplete (${incomplete.length})</h2>${incHtml}
+      <div class="small">Report built from ${all.length} saved runs. Same-name logins are merged into one student.</div>`;
+  }catch(e){
+    $("summaryBody").innerHTML='<div class="small">Could not build summary: '+esc(e.message)+"</div>";
+  }
+};
+
+/* ---------------- leaderboard rebuild ----------------
+   Backfills the leaderboard from the COMPLETE results history so students who
+   qualified BEFORE the fix (when nothing was ever written to the leaderboard)
+   finally show up. Entries are merged by name and, in Tracks mode, per track. */
+$("rebuildLbBtn").onclick=async()=>{
+  if(!currentCode)return;
+  if(!confirm("Rebuild the leaderboard from ALL saved results? Current entries will be replaced."))return;
+  try{
+    const all=await loadAllResults();
+    const s=(classDoc&&classDoc.settings)||{};
+    const goal=pnum(s.goalAccuracy,80);
+    const timeCap=(parseInt(s.goalTimeSeconds)||0)*1000;
+    const best=new Map();
+    if(isTracks()){
+      /* Tracks mode: cumulative per student — per track keep the best finish
+         (higher score, then faster time), then sum across completed tracks.
+         Accuracy = total score / total questions; time = sum of best times. */
+      const byStudent=new Map();
+      all.forEach(r=>{
+        if(r.endedBy!=="finish")return;
+        const k=normName(r.studentName||"");
+        if(!k)return;
+        if(!byStudent.has(k))byStudent.set(k,{name:r.studentName||k,per:{}});
+        const stu=byStudent.get(k);
+        const tk=String(r.track||1);
+        const finalMs=r.finalMs??((r.raceTimeMs!=null)?r.raceTimeMs+(r.penaltySeconds||0)*1000:null);
+        const cur=stu.per[tk];
+        const better=!cur||(r.score??0)>(cur.score??0)
+          ||((r.score??0)===(cur.score??0)&&(finalMs??Infinity)<(cur.finalMs??Infinity));
+        if(better)stu.per[tk]={score:r.score??0,total:r.total??0,finalMs,
+          finalTimeText:r.finalTimeText||r.raceTimeText||"—"};
+      });
+      byStudent.forEach((stu,k)=>{
+        let score=0,total=0,ms=0,completed=0,lastTrack=0;
+        Object.keys(stu.per).forEach(tk=>{
+          const b=stu.per[tk];
+          lastTrack=Math.max(lastTrack,+tk);
+          if(b.finalMs!=null){score+=b.score;total+=b.total;ms+=b.finalMs;completed++;}
+        });
+        if(!completed)return;
+        const percent=total?Math.round(score/total*100):0;
+        if(percent<goal)return;
+        if(timeCap&&ms>timeCap)return;
+        best.set(k,{name:stu.name,track:lastTrack,score,total,percent,attempted:total,
+          finalMs:ms,finalTimeText:fmtMs(ms),raceTimeText:fmtMs(ms),updatedAt:Date.now()});
+      });
+    }else{
+      all.forEach(r=>{
+        if(r.endedBy!=="finish")return;
+        const total=r.total||0,score=r.score||0;
+        const attempted=(r.attempted??r.answered??total);
+        if(total<=0||attempted<total)return;
+        if(total&&Math.round(score/total*100)<goal)return;
+        const finalMs=r.finalMs??((r.raceTimeMs!=null)?r.raceTimeMs+(r.penaltySeconds||0)*1000:null);
+        if(timeCap&&!(finalMs!=null&&finalMs<=timeCap))return;
+        const key=normName(r.studentName||"");
+        const cur=best.get(key);
+        const better=!cur||score>(cur.score||0)||(score===(cur.score||0)&&(finalMs??Infinity)<(cur.finalMs??Infinity));
+        if(better)best.set(key,{name:r.studentName,track:r.track||null,score,total,
+          percent:Math.round(score/total*100),attempted:total,
+          raceTimeText:r.raceTimeText||"—",finalMs:finalMs??null,
+          finalTimeText:r.finalTimeText||r.raceTimeText||"—",updatedAt:r.timestamp||Date.now()});
+      });
+    }
+    // Enrich rebuilt entries with LIVE data from the student records:
+    // current points balance and the ACTUAL completed-track count (union
+    // across same-name logins), so the rebuild doesn't zero them out.
+    const roster=await db.collection("classes").doc(currentCode).collection("students").get();
+    const live=new Map();
+    roster.docs.forEach(d=>{
+      const sd=d.data()||{};
+      const k=normName(sd.name||"");
+      if(!k)return;
+      const doneSet=live.get(k)||{points:0,done:new Set()};
+      doneSet.points=Math.max(doneSet.points,sd.points||0);
+      Object.entries(sd.tracks||{}).forEach(([tk,tv])=>{if(tv&&tv.completed)doneSet.done.add(tk);});
+      live.set(k,doneSet);
+    });
+    const lbRef=db.collection("classes").doc(currentCode).collection("leaderboard");
+    const snap=await lbRef.get();
+    const batch=db.batch();
+    snap.docs.forEach(d=>batch.delete(d.ref));
+    best.forEach((e)=>{
+      const l=live.get(normName(e.name||""));
+      if(l){e.points=l.points;e.tracksDone=l.done.size;}
+      batch.set(lbRef.doc(studentKey(e.name)),e);
+    });
+    await batch.commit();
+    toast(`Leaderboard rebuilt — ${best.size} entr${best.size===1?"y":"ies"} from ${all.length} runs.`);
+  }catch(e){toast("Could not rebuild: "+e.message);}
+};
+
+show("authView");
+})();
+</script>
+<script data-pplx-inline-edit>
+(function () {
+  if (window === window.top) return;
+
+  const allowedParentOrigins = ["https://www.perplexity.ai","https://perplexity.ai","https://testing.perplexity.ai","https://staging.perplexity.ai","https://*.preview.i.perplexity.ai","http://perplexity.localhost","http://localhost:1420","http://127.0.0.1:1420","http://localhost:3000","http://127.0.0.1:3000","http://localhost:5173","http://127.0.0.1:5173"];
+  const MAX_FONT_BYTES = 500 * 1024;
+  const MAX_TOTAL_FONT_BYTES = 2 * 1024 * 1024;
+  const DEFAULT_LINE_HEIGHT = 16;
+  let scrollForwarding = false;
+  let scrollRaf = 0;
+  let trustedTopOrigin = null;
+
+  // Allow entries like "https://*.preview.i.perplexity.ai" — the wildcard
+  // matches a single DNS label (no dots), so "https://*.foo" cannot stretch
+  // across multiple labels.
+  function matchesAllowedOrigin(origin) {
+    if (!origin) return false;
+    for (const entry of allowedParentOrigins) {
+      if (!entry.includes("*")) {
+        if (entry === origin) return true;
+        continue;
+      }
+      const pattern = new RegExp(
+        "^" +
+          entry.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^.]+") +
+          "$",
+      );
+      if (pattern.test(origin)) return true;
+    }
+    return false;
+  }
+
+  // Trust decision: when the sender is same-origin-visible (event.origin is a
+  // real origin like https://www.perplexity.ai) we trust event.origin directly.
+  // When event.origin is "null" (opaque broker srcdoc), we fall back to the
+  // broker's stamped `parentOrigin` to identify the top window. The fallback
+  // is claim-only — we rely on the browser's native `targetOrigin` enforcement
+  // on the response path (see postToTrustedTop) to ensure replies can't be
+  // delivered to anyone but the actual top window of that claimed origin.
+  function getTrustedParentOrigin(event) {
+    const forwardedParentOrigin =
+      typeof event.data.parentOrigin === "string" ? event.data.parentOrigin : null;
+    const parentOrigin = event.origin === "null" ? forwardedParentOrigin : event.origin;
+    return matchesAllowedOrigin(parentOrigin) ? parentOrigin : null;
+  }
+
+  // All responses go to window.top with targetOrigin = the allowlisted origin.
+  // An attacker that iframes us inside their own null-origin broker can claim
+  // any parentOrigin they like, but the browser will drop the reply whenever
+  // the real top's origin doesn't match — so the screenshot never leaves.
+  function postToTrustedTop(message) {
+    if (!trustedTopOrigin) return;
+    try {
+      window.top.postMessage(message, trustedTopOrigin);
+    } catch (_error) {}
+  }
+
+  const PICK_CAPABILITIES = ["pick"];
+  const PICK_CHAIN_LENGTH = 4;
+  const PICK_MAX_TEXT_CHARS = 120;
+  const PICK_MAX_HTML_CHARS = 300;
+
+  function truncate(value, maxChars) {
+    return value.length > maxChars ? value.slice(0, maxChars - 1) + "…" : value;
+  }
+
+  function isPickableElement(element) {
+    return (
+      element instanceof Element &&
+      element !== document.documentElement &&
+      element !== document.body
+    );
+  }
+
+  function resolvePickTarget(x, y) {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    const element = document.elementFromPoint(x, y);
+    return isPickableElement(element) ? element.closest("svg") || element : null;
+  }
+
+  function pickLabel(element) {
+    if (element.id) return element.localName + "#" + element.id;
+    return [element.localName].concat(Array.from(element.classList).slice(0, 2)).join(".");
+  }
+
+  // Only attributes that help find the element in source. data-* values and URL
+  // query strings or fragments can carry tokens.
+  const PICK_ATTRIBUTES = new Set([
+    "id",
+    "class",
+    "name",
+    "type",
+    "role",
+    "alt",
+    "aria-label",
+    "href",
+    "src",
+  ]);
+
+  function pickAttributeValue(attribute) {
+    return attribute.name === "href" || attribute.name === "src"
+      ? attribute.value.split(/[?#]/)[0]
+      : attribute.value;
+  }
+
+  function describePickElement(element) {
+    const chain = [];
+    for (
+      let current = element;
+      isPickableElement(current) && chain.length < PICK_CHAIN_LENGTH;
+      current = current.parentElement
+    ) {
+      chain.unshift(current);
+    }
+    const attributes = Array.from(element.attributes)
+      .filter((attribute) => PICK_ATTRIBUTES.has(attribute.name))
+      .map((attribute) => ` ${attribute.name}="${pickAttributeValue(attribute).replace(/"/g, "&quot;")}"`)
+      .join("");
+    const text = (element.innerText || element.textContent || "").replace(/\s+/g, " ").trim();
+    return {
+      chain: chain.map(pickLabel),
+      html: truncate(`<${element.localName}${attributes}>`, PICK_MAX_HTML_CHARS),
+      text: text ? truncate(text, PICK_MAX_TEXT_CHARS) : undefined,
+    };
+  }
+
+  // Hover asks once per frame, and innerText on a large section forces layout,
+  // so only the rect is re-read while the pointer stays on the same element.
+  // Clicks ask for fresh details since the page may have changed the element.
+  let lastPick = null;
+
+  function describePickTarget(element, fresh) {
+    if (fresh || lastPick?.element !== element) {
+      lastPick = { element, details: describePickElement(element) };
+    }
+    const rect = element.getBoundingClientRect();
+    return {
+      rect: { x: rect.left, y: rect.top, width: rect.width, height: rect.height },
+      ...lastPick.details,
+    };
+  }
+
+  function inlineAll(original, clone) {
+    if (original.nodeType !== 1 || clone.nodeType !== 1) return;
+
+    try {
+      const computedStyle = getComputedStyle(original);
+      // cssText on a computed style is the serialized declaration in modern
+      // Chromium/Safari — a single read beats enumerating ~400 longhand
+      // properties. Firefox returns "" here, so we fall back on empty.
+      const serialized = computedStyle.cssText;
+      if (serialized) {
+        clone.style.cssText = serialized;
+      } else {
+        const parts = new Array(computedStyle.length);
+        for (let index = 0; index < computedStyle.length; index += 1) {
+          const property = computedStyle[index];
+          parts[index] = `${property}:${computedStyle.getPropertyValue(property)};`;
+        }
+        clone.style.cssText = parts.join("");
+      }
+    } catch (_error) {}
+
+    const originalChildren = original.children;
+    const clonedChildren = clone.children;
+    for (
+      let index = 0;
+      index < originalChildren.length && index < clonedChildren.length;
+      index += 1
+    ) {
+      inlineAll(originalChildren[index], clonedChildren[index]);
+    }
+  }
+
+  function extractFontUrl(srcValue) {
+    const matches = [
+      ...srcValue.matchAll(
+        /url\(["']?([^"')]+)["']?\)(?:\s*format\(["']?([^"')]+)["']?\))?/gi,
+      ),
+    ];
+    if (matches.length === 0) return null;
+    const woff2 = matches.find((m) => m[2] && m[2].toLowerCase().includes("woff2"));
+    if (woff2) return woff2[1];
+    const woff = matches.find((m) => m[2] && m[2].toLowerCase().includes("woff"));
+    if (woff) return woff[1];
+    return matches[0][1];
+  }
+
+  // Cache resolved font URL -> data URI across captures. Fonts on a page
+  // essentially never change, and a batch run emits multiple captures back to
+  // back — without this we'd refetch + re-base64 every time.
+  const fontDataUriCache = new Map();
+  const SRC_DECLARATION_RE = /src\s*:\s*[^;}]+/i;
+
+  async function fetchAsDataUri(url) {
+    if (fontDataUriCache.has(url)) return fontDataUriCache.get(url);
+    let dataUri = null;
+    try {
+      const response = await fetch(url, { mode: "cors", credentials: "omit" });
+      if (response.ok) {
+        const blob = await response.blob();
+        if (blob.size <= MAX_FONT_BYTES) {
+          dataUri = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () =>
+              resolve(typeof reader.result === "string" ? reader.result : null);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(blob);
+          });
+        }
+      }
+    } catch (_error) {
+      dataUri = null;
+    }
+    fontDataUriCache.set(url, dataUri);
+    return dataUri;
+  }
+
+  function collectFontFaceRuleTexts() {
+    const rules = [];
+    for (const sheet of document.styleSheets) {
+      let cssRules;
+      try {
+        cssRules = sheet.cssRules;
+      } catch (_error) {
+        continue;
+      }
+      if (!cssRules) continue;
+      for (const rule of cssRules) {
+        const cssText = rule.cssText || "";
+        if (cssText.startsWith("@font-face")) rules.push(cssText);
+      }
+    }
+    return rules;
+  }
+
+  async function buildInlinedFontCss() {
+    const ruleTexts = collectFontFaceRuleTexts();
+    if (ruleTexts.length === 0) return null;
+
+    const resolved = ruleTexts.map((cssText) => {
+      if (!SRC_DECLARATION_RE.test(cssText)) return null;
+      const srcMatch = cssText.match(/src\s*:\s*([^;}]+)[;}]/i);
+      if (!srcMatch) return null;
+      const url = extractFontUrl(srcMatch[1]);
+      if (!url) return null;
+      try {
+        return { cssText, url: new URL(url, document.baseURI).href };
+      } catch (_error) {
+        return null;
+      }
+    });
+
+    const dataUris = await Promise.all(
+      resolved.map((entry) => (entry ? fetchAsDataUri(entry.url) : Promise.resolve(null))),
+    );
+
+    const inlined = [];
+    let totalBytes = 0;
+    for (let index = 0; index < resolved.length; index += 1) {
+      const entry = resolved[index];
+      const dataUri = dataUris[index];
+      if (!entry || !dataUri) continue;
+      const approxBytes = dataUri.length * 0.75;
+      if (totalBytes + approxBytes > MAX_TOTAL_FONT_BYTES) break;
+      totalBytes += approxBytes;
+      inlined.push(entry.cssText.replace(SRC_DECLARATION_RE, `src: url("${dataUri}")`));
+    }
+    return inlined.length > 0 ? inlined.join("\n") : null;
+  }
+
+  function stripExternal(clone) {
+    const images = clone.querySelectorAll("img");
+    for (let index = 0; index < images.length; index += 1) {
+      const src = images[index].getAttribute("src");
+      if (src && !src.startsWith("data:")) images[index].removeAttribute("src");
+    }
+
+    const elements = clone.querySelectorAll("*");
+    for (let index = 0; index < elements.length; index += 1) {
+      const style = elements[index].style.cssText;
+      if (style && style.includes("url(")) {
+        elements[index].style.cssText = style.replace(
+          /url\(["']?(?!data:)[^)"']*["']?\)/gi,
+          "none",
+        );
+      }
+    }
+  }
+
+  function emitScroll() {
+    scrollRaf = 0;
+    if (!scrollForwarding) return;
+    postToTrustedTop({
+      type: "INLINE_EDIT_SCROLL",
+      scrollX: window.scrollX,
+      scrollY: window.scrollY,
+      capabilities: PICK_CAPABILITIES,
+    });
+  }
+
+  window.addEventListener(
+    "scroll",
+    function () {
+      if (!scrollForwarding || scrollRaf) return;
+      scrollRaf = requestAnimationFrame(emitScroll);
+    },
+    { passive: true, capture: true },
+  );
+
+  async function handleCaptureRequest(event) {
+    const requestId = event.data.requestId;
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    function postResult(dataUrl) {
+      postToTrustedTop({
+        type: "INLINE_EDIT_SCREENSHOT_RESULT",
+        requestId,
+        dataUrl,
+        scrollX,
+        scrollY,
+      });
+    }
+
+    try {
+      // Wait for any pending web fonts to resolve so both inline metrics and
+      // the @font-face inlining below see the same loaded faces.
+      if (document.fonts && document.fonts.ready) {
+        try {
+          await document.fonts.ready;
+        } catch (_error) {}
+      }
+
+      const clone = document.documentElement.cloneNode(true);
+      inlineAll(document.documentElement, clone);
+
+      const removedNodes = clone.querySelectorAll("script,link[rel=\"stylesheet\"],style");
+      for (let index = 0; index < removedNodes.length; index += 1) {
+        removedNodes[index].remove();
+      }
+
+      stripExternal(clone);
+
+      // Re-embed web fonts as data-URI @font-face rules so the SVG rasterizer
+      // can resolve them — external font URLs aren't fetched during
+      // foreignObject rendering, which would otherwise force a fallback face
+      // and change text metrics.
+      const inlinedFontCss = await buildInlinedFontCss();
+      if (inlinedFontCss) {
+        const styleEl = document.createElement("style");
+        styleEl.textContent = inlinedFontCss;
+        const head = clone.querySelector("head");
+        if (head) head.appendChild(styleEl);
+        else clone.insertBefore(styleEl, clone.firstChild);
+      }
+
+      const html = new XMLSerializer().serializeToString(clone);
+      const svg =
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
+        '<foreignObject width="100%" height="100%">' +
+        `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${width}px;height:${height}px;overflow:hidden">` +
+        `<div style="position:relative;left:-${scrollX}px;top:-${scrollY}px">` +
+        html +
+        "</div></div></foreignObject></svg>";
+      const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+      const image = new Image();
+      image.onload = function () {
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d").drawImage(image, 0, 0);
+        postResult(canvas.toDataURL("image/png"));
+      };
+      image.onerror = function () {
+        postResult(null);
+      };
+      image.src = svgUrl;
+    } catch (_error) {
+      postResult(null);
+    }
+  }
+
+  window.addEventListener("message", function (event) {
+    if (!event.data) return;
+    // Only accept messages from the direct parent frame. Blocks sibling /
+    // unrelated-window postMessage senders that could otherwise reach us.
+    if (event.source !== window.parent) return;
+
+    const trustedParentOrigin = getTrustedParentOrigin(event);
+    if (!trustedParentOrigin) return;
+    trustedTopOrigin = trustedParentOrigin;
+
+    if (event.data.type === "INLINE_EDIT_PICK") {
+      const element = resolvePickTarget(event.data.x, event.data.y);
+      postToTrustedTop({
+        type: "INLINE_EDIT_PICK_RESULT",
+        seq: event.data.seq,
+        target: element ? describePickTarget(element, event.data.fresh === true) : null,
+      });
+      return;
+    }
+
+    if (event.data.type === "INLINE_EDIT_SCROLL_START") {
+      scrollForwarding = true;
+      emitScroll();
+      return;
+    }
+
+    if (event.data.type === "INLINE_EDIT_SCROLL_STOP") {
+      scrollForwarding = false;
+      if (scrollRaf) cancelAnimationFrame(scrollRaf);
+      scrollRaf = 0;
+      return;
+    }
+
+    if (event.data.type === "INLINE_EDIT_SCROLL_BY") {
+      const { deltaX, deltaY, deltaMode } = event.data;
+      if (!scrollForwarding || !Number.isFinite(deltaX) || !Number.isFinite(deltaY)) return;
+      if (deltaMode !== 0 && deltaMode !== 1 && deltaMode !== 2) return;
+      const lineHeight =
+        parseFloat(getComputedStyle(document.documentElement).lineHeight) || DEFAULT_LINE_HEIGHT;
+      const scaleX = deltaMode === 1 ? lineHeight : deltaMode === 2 ? window.innerWidth : 1;
+      const scaleY = deltaMode === 1 ? lineHeight : deltaMode === 2 ? window.innerHeight : 1;
+      // The selection overlay receives the wheel event instead of this iframe.
+      // Instant scrolling preserves trackpad deltas even on smooth-scroll sites.
+      window.scrollBy({ left: deltaX * scaleX, top: deltaY * scaleY, behavior: "instant" });
+      emitScroll();
+      return;
+    }
+
+    if (event.data.type !== "INLINE_EDIT_CAPTURE_REQUEST") return;
+
+    handleCaptureRequest(event);
+  });
+})();
+
+
+</script><script>
+/* Tab navigation for the class management view. Purely presentational —
+   every panel stays in the DOM, so the live Firestore subscriptions keep
+   updating hidden tabs exactly as before. */
+(function(){
+  var tabs=document.querySelectorAll("[data-tab]");
+  var secs=document.querySelectorAll("[data-sec]");
+  tabs.forEach(function(t){t.addEventListener("click",function(){
+    tabs.forEach(function(x){x.classList.toggle("active",x===t);});
+    secs.forEach(function(s){s.classList.toggle("hidden",s.getAttribute("data-sec")!==t.getAttribute("data-tab"));});
+    window.scrollTo({top:0,behavior:"instant"});
+  });});
+})();
+</script>
+</body></html>
