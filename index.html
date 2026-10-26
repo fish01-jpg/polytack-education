@@ -5663,6 +5663,18 @@ setInterval(()=>{
       RACE.phase="ended";
       stopReplayCapture();stopVideoCapture();
       logResult(prevNonZero||RACE.lastNonZero,"restart",RACE.runId);
+    }else if(!document.hidden&&(t===null||now-RACE.lastChangeAt>4000)){
+      // Timer stopped telling time, no finish, no restart: the player LEFT
+      // the run (back to the game menu / lobby) without finishing it.
+      // RACE.phase used to stay "running" FOREVER after that — which kept the
+      // 🔒 unmodded toggle blocked ("finish your run first") even though no
+      // run was live, and left the ghost/replay capture buffers stuck open
+      // (the next run then never re-registered, so no ghost was recorded).
+      // Treat it exactly like an abandoned restart, with the time it reached.
+      // (Skip while the tab is hidden: backgrounded timers freeze by design.)
+      RACE.phase="ended";
+      stopReplayCapture();stopVideoCapture();
+      logResult(prevNonZero||RACE.lastNonZero||t,"restart",RACE.runId);
     }else if(moving&&S().questionMode==="race-progress"){
       // Race-progress questions: about every N seconds of race time.
       // (Tracks mode has no in-race questions — the quiz is the unlock gate.
@@ -8009,7 +8021,16 @@ async function logResult(t,endedBy,runId){
               /* storage full/error: keep the previous recording */
             }
             if(stored)soloGhostPosKey=null;   /* invalidate the ghost cache */
+            else toast("👻 Ghost not saved — storage is full or blocked (old replays/recordings take the space). Delete some replays (🎥 Replays → delete) and finish a run again.");
           }
+        }else{
+          /* never silent: if a solo FINISH produced no ghost, say WHY — the
+             ghost can only appear from a recorded finish, and every failure
+             here used to vanish silently (the ghost just never showed). */
+          const why=(!rc0)?"the run's capture never started (the run wasn't registered at its start)"
+            :(!Array.isArray(rc0.samples)||rc0.samples.length<8)?"too few position samples were captured"
+            :"the game's track fingerprint was missing at run start";
+          toast("👻 Ghost not saved — "+why+". Finish another run on this track to create it.");
         }
       }
     }catch(e2){}
