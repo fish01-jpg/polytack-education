@@ -6850,12 +6850,46 @@ HOOKS.frameJobs.push(function soloGhostExactJob(){
                 d.samples=decSamples(parts.join(""));
               }catch(ec){d.samples=null;}
             }
-            /* course identity: STRICT — the recording must be for THIS
-               exact live course. A mismatch means no position ghost. */
             const flat=d?decSamples(d.samples):null;
-            if(d&&flat&&Array.isArray(flat)&&flat.length>=8&&d.engineTrackId&&d.engineTrackId===tid){
-              soloGhostPos=flat;
-              soloGhostPosTime=d.timeMs||null;
+            if(d&&flat&&Array.isArray(flat)&&flat.length>=8){
+              /* course identity — same tolerance as the classmate ghost:
+                 STRICT when both sides carry the engine fingerprint;
+                 when either side lacks it, fall back to the recorded
+                 menu course number (gameTrack). The old code hard-required
+                 the fingerprint on BOTH sides — a missing one meant the
+                 ghost could never load, and the ghost just never appeared. */
+              const recTid=d.engineTrackId||null;
+              let ok;
+              if(recTid&&tid){
+                ok=recTid===tid;
+              }else{
+                const lt=(typeof gameTrack==="number")?gameTrack:null;
+                const rt=(typeof d.gameTrack==="number")?d.gameTrack:null;
+                ok=(lt==null||rt==null||lt===rt);
+              }
+              if(ok){
+                soloGhostPos=flat;
+                soloGhostPosTime=d.timeMs||null;
+              }
+            }
+          }
+        }catch(e){}
+      }else{
+        /* NO live fingerprint (the game hasn't exposed one right now) — the
+           recording is still worth trying by menu course number, keyed by
+           the storage key's own course scope. A later poll with a live
+           fingerprint revalidates strictly via cacheKey. */
+        try{
+          const raw=__LS.getItem("ptc-solo-bestpos-"+k);
+          if(raw){
+            const d=JSON.parse(raw);
+            if(d&&!d.chunkCount){
+              const flat=decSamples(d.samples);
+              if(flat&&Array.isArray(flat)&&flat.length>=8&&(!d.engineTrackId||d.engineTrackId===null)){
+                const lt=(typeof gameTrack==="number")?gameTrack:null;
+                const rt=(typeof d.gameTrack==="number")?d.gameTrack:null;
+                if(lt==null||rt==null||lt===rt){soloGhostPos=flat;soloGhostPosTime=d.timeMs||null;}
+              }
             }
           }
         }catch(e){}
@@ -7948,11 +7982,17 @@ async function logResult(t,endedBy,runId){
         let prev=null;
         try{prev=JSON.parse(__LS.getItem(key0)||"null");}catch(e){}
         const rc0=ghostRec;
-        if(rc0&&Array.isArray(rc0.samples)&&rc0.samples.length>=8&&rc0.engineTrackId){
+        /* 🎯 engineTrackId is no longer REQUIRED to save: the menu course
+           number (gameTrack) is stored alongside and the load side falls
+           back to it — the same tolerance the classmate ghost has always
+           had. A missing fingerprint used to silently discard the recording
+           (the ghost then never appeared at all). */
+        if(rc0&&Array.isArray(rc0.samples)&&rc0.samples.length>=8){
           /* course-aware replacement: a DIFFERENT course always replaces
              (its old trajectory is meaningless here); the SAME course
              only replaces on a faster finish. */
-          const sameCourse=prev&&prev.engineTrackId===rc0.engineTrackId;
+          const sameCourse=prev&&prev.engineTrackId&&rc0.engineTrackId?prev.engineTrackId===rc0.engineTrackId
+            :(prev&&rc0.gameTrack!=null&&prev.gameTrack!=null)?String(prev.gameTrack)===String(rc0.gameTrack):!prev;
           const better=!prev||!prev.timeMs||Math.round(t.ms)<prev.timeMs;
           if(!sameCourse||better){
             /* FULL-FIDELITY storage: delta-encoded samples keep EVERY
@@ -7973,7 +8013,8 @@ async function logResult(t,endedBy,runId){
             try{
               const json=JSON.stringify({
                 timeMs:Math.round(t.ms),samples:encSamples(rc0.samples),
-                engineTrackId:rc0.engineTrackId,
+                engineTrackId:rc0.engineTrackId||null,
+                gameTrack:(typeof rc0.gameTrack==="number"?rc0.gameTrack:null),
                 colors:(Array.isArray(rc0.carColors)?rc0.carColors:null)   /* the paint this run wore */
               });
               const prevRev=(prev&&prev.rev)||null;
@@ -8009,7 +8050,8 @@ async function logResult(t,endedBy,runId){
                 if(!allParts){rmNew();throw new Error("part");}
                 const manifest=JSON.stringify({
                   timeMs:Math.round(t.ms),samples:null,chunkCount:parts.length,rev,
-                  engineTrackId:rc0.engineTrackId,
+                  engineTrackId:rc0.engineTrackId||null,
+                  gameTrack:(typeof rc0.gameTrack==="number"?rc0.gameTrack:null),
                   colors:(Array.isArray(rc0.carColors)?rc0.carColors:null)
                 });
                 if(!put(key0,manifest)){rmNew();throw new Error("manifest");}  /* previous intact */
@@ -8028,8 +8070,7 @@ async function logResult(t,endedBy,runId){
              ghost can only appear from a recorded finish, and every failure
              here used to vanish silently (the ghost just never showed). */
           const why=(!rc0)?"the run's capture never started (the run wasn't registered at its start)"
-            :(!Array.isArray(rc0.samples)||rc0.samples.length<8)?"too few position samples were captured"
-            :"the game's track fingerprint was missing at run start";
+            :"too few position samples were captured";
           toast("👻 Ghost not saved — "+why+". Finish another run on this track to create it.");
         }
       }
